@@ -1,0 +1,37 @@
+# Déploiement : `ADMIN_USERNAME=... ADMIN_PASSWORD=... docker compose up -d`
+# (les variables admin ne servent qu'au premier lancement, base vide).
+services:
+  app:
+    build: .
+    image: flowboard:latest
+    restart: unless-stopped
+    ports:
+      - '${FLOWBOARD_PORT:-8080}:3000'
+    environment:
+      MONGO_URL: mongodb://mongo:27017/flowboard
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      # Mettre false uniquement sans TLS (accès HTTP direct, hors localhost).
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      # Derrière un reverse proxy : nombre de proxys de confiance (ex. 1), pour l'IP réelle.
+      TRUST_PROXY: ${TRUST_PROXY:-}
+    volumes:
+      - uploads:/data/uploads
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ['CMD', 'mongosh', '--quiet', '--eval', "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+volumes:
+  mongo-data:
+  uploads:

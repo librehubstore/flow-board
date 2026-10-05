@@ -1,0 +1,29 @@
+{
+  "name": "flowboard",
+  "private": true,
+  "workspaces": [
+    "packages/shared",
+    "apps/api",
+    "apps/web"
+  ],
+  "scripts": {
+    "build": "npm run build -w @flowboard/shared && npm run build -w @flowboard/api && npm run build -w @flowboard/web",
+    "dev:api": "npm run build -w @flowboard/shared && npm run dev -w @flowboard/api",
+    "dev:web": "npm run dev -w @flowboard/web",
+    "start": "node apps/api/dist/main.js",
+    "test": "npm run test -w @flowboard/shared && npm run test -w @flowboard/api",
+    "test:e2e": "playwright test",
+    "lint": "eslint . && tsc -p apps/web --noEmit && tsc -p apps/api --noEmit",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.63.0",
+    "eslint": "^10.12.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "prettier": "^3.9.9",
+    "typescript": "5.9",
+    "typescript-eslint": "^8.71.0"
+  },
+  "type": "module"
+}
