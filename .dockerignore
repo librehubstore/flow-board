@@ -8,4 +8,5 @@ playwright-report
 uploads
 e2e
 *.log
-.env
+**/.env
+**/.env.local

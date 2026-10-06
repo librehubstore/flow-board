@@ -29,7 +29,8 @@ describe('Lot 1 — comptes et authentification (§ 4.1)', () => {
   it('5 échecs consécutifs → connexion bloquée, même avec le bon mot de passe', async () => {
     await makeUser(ctx.http, admin, 'bruteforced');
     const c = new Client(ctx.http);
-    for (let i = 0; i < 5; i++) expect((await c.post('/auth/login', { username: 'bruteforced', password: 'bad' })).status).toBe(401);
+    for (let i = 0; i < 5; i++)
+      expect((await c.post('/auth/login', { username: 'bruteforced', password: 'bad' })).status).toBe(401);
     const r = await c.post('/auth/login', { username: 'bruteforced', password: 'personal-pass' });
     expect(r.status).toBe(429);
   });
@@ -43,7 +44,14 @@ describe('Lot 1 — comptes et authentification (§ 4.1)', () => {
     const c = await login(ctx.http, 'forgetful', reset.body.temporaryPassword);
     expect((await c.get('/boards')).body.code).toBe('MUST_CHANGE_PASSWORD');
     expect((await c.get('/me')).body.mustChangePassword).toBe(true);
-    expect((await c.post('/auth/password', { currentPassword: reset.body.temporaryPassword, newPassword: 'brand-new-pass' })).status).toBe(204);
+    expect(
+      (
+        await c.post('/auth/password', {
+          currentPassword: reset.body.temporaryPassword,
+          newPassword: 'brand-new-pass',
+        })
+      ).status,
+    ).toBe(204);
     expect((await c.get('/boards')).status).toBe(200);
   });
 
@@ -51,16 +59,26 @@ describe('Lot 1 — comptes et authentification (§ 4.1)', () => {
     await makeUser(ctx.http, admin, 'twodevices');
     const a = await login(ctx.http, 'twodevices', 'personal-pass');
     const b = await login(ctx.http, 'twodevices', 'personal-pass');
-    expect((await a.post('/auth/password', { currentPassword: 'wrong-wrong', newPassword: 'another-pass' })).status).toBe(400);
-    expect((await a.post('/auth/password', { currentPassword: 'personal-pass', newPassword: 'court' })).status).toBe(400);
-    expect((await a.post('/auth/password', { currentPassword: 'personal-pass', newPassword: 'another-pass' })).status).toBe(204);
+    expect(
+      (await a.post('/auth/password', { currentPassword: 'wrong-wrong', newPassword: 'another-pass' }))
+        .status,
+    ).toBe(400);
+    expect(
+      (await a.post('/auth/password', { currentPassword: 'personal-pass', newPassword: 'court' })).status,
+    ).toBe(400);
+    expect(
+      (await a.post('/auth/password', { currentPassword: 'personal-pass', newPassword: 'another-pass' }))
+        .status,
+    ).toBe(204);
     expect((await a.get('/me')).status).toBe(200);
     expect((await b.get('/me')).status).toBe(401);
   });
 
   it('le dernier admin ne peut être ni rétrogradé ni désactivé', async () => {
     const me = await admin.get('/me');
-    expect((await admin.patch(`/admin/users/${me.body._id}`, { globalRole: 'user' })).body.code).toBe('LAST_ADMIN');
+    expect((await admin.patch(`/admin/users/${me.body._id}`, { globalRole: 'user' })).body.code).toBe(
+      'LAST_ADMIN',
+    );
     expect((await admin.patch(`/admin/users/${me.body._id}`, { status: 'disabled' })).status).toBe(409);
   });
 
@@ -68,13 +86,23 @@ describe('Lot 1 — comptes et authentification (§ 4.1)', () => {
     const { id, client } = await makeUser(ctx.http, admin, 'leaver');
     expect((await admin.patch(`/admin/users/${id}`, { status: 'disabled' })).status).toBe(200);
     expect((await client.get('/me')).status).toBe(401);
-    expect((await new Client(ctx.http).post('/auth/login', { username: 'leaver', password: 'personal-pass' })).status).toBe(401);
+    expect(
+      (await new Client(ctx.http).post('/auth/login', { username: 'leaver', password: 'personal-pass' }))
+        .status,
+    ).toBe(401);
     await admin.patch(`/admin/users/${id}`, { status: 'active' });
-    expect((await new Client(ctx.http).post('/auth/login', { username: 'leaver', password: 'personal-pass' })).status).toBe(200);
+    expect(
+      (await new Client(ctx.http).post('/auth/login', { username: 'leaver', password: 'personal-pass' }))
+        .status,
+    ).toBe(200);
   });
 
   it('identifiant unique et insensible à la casse', async () => {
-    const r = await admin.post('/admin/users', { username: 'LEAVER', fullName: 'x', password: 'initial-pass' });
+    const r = await admin.post('/admin/users', {
+      username: 'LEAVER',
+      fullName: 'x',
+      password: 'initial-pass',
+    });
     expect(r.body.code).toBe('USERNAME_TAKEN');
   });
 
@@ -95,11 +123,15 @@ describe('Lot 1 — comptes et authentification (§ 4.1)', () => {
 
   it('les actions admin sont auditées', async () => {
     const audit = await admin.get('/admin/audit');
-    expect(audit.body.map((a: { action: string }) => a.action)).toEqual(expect.arrayContaining(['user.create', 'user.resetPassword']));
+    expect(audit.body.map((a: { action: string }) => a.action)).toEqual(
+      expect.arrayContaining(['user.create', 'user.resetPassword']),
+    );
   });
 
   it('paramètres d’instance : lecture publique, modification admin', async () => {
     expect((await new Client(ctx.http).get('/settings')).body.instanceName).toBe('Flowboard');
-    expect((await admin.patch('/admin/settings', { instanceName: 'Équipe Ops' })).body.instanceName).toBe('Équipe Ops');
+    expect((await admin.patch('/admin/settings', { instanceName: 'Équipe Ops' })).body.instanceName).toBe(
+      'Équipe Ops',
+    );
   });
 });

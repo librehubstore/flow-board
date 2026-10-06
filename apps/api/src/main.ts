@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import type { NextFunction, Request, Response } from 'express';
@@ -6,13 +7,14 @@ import helmet from 'helmet';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { AppModule } from './app.module';
-import { config } from './config';
+import { config } from './config/config';
 
 /** Configuration commune à l'application et aux tests. */
 export function setup(app: NestExpressApplication) {
   if (config.TRUST_PROXY) app.set('trust proxy', config.TRUST_PROXY);
   app.use(helmet());
   app.setGlobalPrefix('api');
+  // Arrêt propre (SIGTERM de Docker) : fermeture des connexions Mongo et Socket.IO.
   app.enableShutdownHooks();
   return app;
 }
@@ -23,10 +25,13 @@ export async function bootstrap() {
   if (existsSync(config.WEB_DIST)) {
     app.useStaticAssets(config.WEB_DIST, { index: false });
     app.use((req: Request, res: Response, next: NextFunction) =>
-      req.method === 'GET' && !req.path.startsWith('/api') ? res.sendFile(join(config.WEB_DIST, 'index.html')) : next(),
+      req.method === 'GET' && !req.path.startsWith('/api')
+        ? res.sendFile(join(config.WEB_DIST, 'index.html'))
+        : next(),
     );
   }
   await app.listen(config.PORT);
+  new Logger('Bootstrap').log(`Flowboard à l'écoute sur le port ${config.PORT}`);
 }
 
 if (require.main === module) void bootstrap();

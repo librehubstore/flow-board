@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react';
 import { useMutation, useQueryClient, type MutateOptions } from '@tanstack/react-query';
-import type { Permission } from '@flowboard/shared';
+import type { BoardFilter, Permission } from '@flowboard/shared';
 import type { BoardPayload, Member, Task } from '../api';
 
 export interface BoardContext {
@@ -11,8 +11,16 @@ export interface BoardContext {
   upsert: (task: Task) => void;
   remove: (ids: string[]) => void;
   openTask: (id: string) => void;
+  /** Menu rapide d'une carte, à la position donnée (clic droit ou clavier). */
+  openMenu: (task: Task, x: number, y: number) => void;
   meId: string;
   tz: string;
+  /** Mode mur : affichage plein écran en lecture seule. */
+  wall?: boolean;
+  filter: BoardFilter;
+  setFilter: (f: BoardFilter) => void;
+  /** Vrai si la tâche passe le filtre du board. */
+  matches: (task: Task) => boolean;
 }
 
 export const BoardCtx = createContext<BoardContext | null>(null);

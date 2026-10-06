@@ -1,34 +1,44 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
-import { AdminController } from './admin.controller';
-import { AttachmentsController } from './attachments.controller';
-import { CommentsController } from './comments.controller';
-import { NotificationsService } from './notifications.service';
-import { RealtimeGateway } from './realtime.gateway';
-import { Realtime } from './realtime.service';
-import { AuditService } from './audit.service';
-import { AuthController } from './auth.controller';
-import { AuthService } from './auth.service';
-import { BoardsController } from './boards.controller';
-import { BoardsService } from './boards.service';
-import { Db } from './db';
-import { AccessGuard } from './http';
-import { SettingsService } from './settings.service';
-import { TasksService } from './tasks.service';
+import { EventEmitterModule } from '@nestjs/event-emitter';
+import { AttachmentsModule } from './attachments/attachments.module';
+import { AuditModule } from './audit/audit.module';
+import { AuthModule } from './auth/auth.module';
+import { BoardsModule } from './boards/boards.module';
+import { CommentsModule } from './comments/comments.module';
+import { DatabaseModule } from './database/database.module';
+import { HealthController } from './health/health.controller';
+import { NotificationsModule } from './notifications/notifications.module';
+import { RealtimeModule } from './realtime/realtime.module';
+import { ReportsModule } from './reports/reports.module';
+import { RolesModule } from './roles/roles.module';
+import { SettingsModule } from './settings/settings.module';
+import { TasksModule } from './tasks/tasks.module';
+import { TimeModule } from './time/time.module';
+import { UsersModule } from './users/users.module';
 
+/**
+ * Graphe des modules (sans cycle) :
+ * database (global) ← board-access ← auth ← realtime ← notifications ← tasks ← boards / comments / attachments
+ * Les suppressions en cascade remontent par événements (`task.deleted`, `board.purged`).
+ */
 @Module({
-  controllers: [AuthController, AdminController, BoardsController, CommentsController, AttachmentsController],
-  providers: [
-    Db,
-    Realtime,
-    RealtimeGateway,
-    NotificationsService,
-    AuthService,
-    AuditService,
-    SettingsService,
-    TasksService,
-    BoardsService,
-    { provide: APP_GUARD, useClass: AccessGuard },
+  imports: [
+    EventEmitterModule.forRoot(),
+    DatabaseModule,
+    AuthModule,
+    UsersModule,
+    AuditModule,
+    SettingsModule,
+    RealtimeModule,
+    NotificationsModule,
+    BoardsModule,
+    TasksModule,
+    CommentsModule,
+    AttachmentsModule,
+    TimeModule,
+    ReportsModule,
+    RolesModule,
   ],
+  controllers: [HealthController],
 })
 export class AppModule {}

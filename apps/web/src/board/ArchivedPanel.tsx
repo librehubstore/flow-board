@@ -9,9 +9,14 @@ export function ArchivedPanel({ open, onClose }: { open: boolean; onClose: () =>
   const { data, can, upsert, openTask, tz } = useBoard();
   const qc = useQueryClient();
   const key = ['archived', data.board._id];
-  const list = useQuery({ queryKey: key, queryFn: () => api<Task[]>(`/boards/${data.board._id}/tasks?archived=true`), enabled: open });
+  const list = useQuery({
+    queryKey: key,
+    queryFn: () => api<Task[]>(`/boards/${data.board._id}/tasks?archived=true`),
+    enabled: open,
+  });
   const restore = useMutation({
-    mutationFn: (id: string) => api<Task>(`/boards/${data.board._id}/tasks/${id}/restore`, { method: 'POST' }),
+    mutationFn: (id: string) =>
+      api<Task>(`/boards/${data.board._id}/tasks/${id}/restore`, { method: 'POST' }),
     onSuccess: (task) => {
       upsert(task);
       void qc.invalidateQueries({ queryKey: key });
@@ -23,10 +28,16 @@ export function ArchivedPanel({ open, onClose }: { open: boolean; onClose: () =>
       <ul className="divide-y divide-line">
         {list.data?.map((task) => (
           <li key={task._id} className="flex items-center gap-2 py-2">
-            <button type="button" className={`${btnGhost} min-w-0 flex-1 justify-start text-fg`} onClick={() => openTask(task._id)}>
+            <button
+              type="button"
+              className={`${btnGhost} min-w-0 flex-1 justify-start text-fg`}
+              onClick={() => openTask(task._id)}
+            >
               <span className="truncate">{task.name}</span>
             </button>
-            <span className="text-xs text-muted">{t('archived.archivedOn', { date: formatDate(task.archivedAt!, i18n.language, tz) })}</span>
+            <span className="text-xs text-muted">
+              {t('archived.archivedOn', { date: formatDate(task.archivedAt!, i18n.language, tz) })}
+            </span>
             {can('task.edit') && (
               <button type="button" className={btn} onClick={() => restore.mutate(task._id)}>
                 {t('task.restore')}

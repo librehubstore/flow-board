@@ -1,8 +1,8 @@
 import i18n from 'i18next';
 import { initReactI18next, useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useRef, type ReactNode } from 'react';
-import type { Color } from '@flowboard/shared';
+import { useEffect, useRef, useSyncExternalStore, type ReactNode } from 'react';
+import { isHexColor, type Color, type TaskColor } from '@flowboard/shared';
 import { api, ApiError, type DirectoryUser, type Settings, type User } from './api';
 import fr from './locales/fr';
 import en from './locales/en';
@@ -17,7 +17,8 @@ export { i18n };
 
 // ---------- Données communes ----------
 export const useMe = () => useQuery({ queryKey: ['me'], queryFn: () => api<User>('/me'), retry: false });
-export const useSettings = () => useQuery({ queryKey: ['settings'], queryFn: () => api<Settings>('/settings'), staleTime: 60_000 });
+export const useSettings = () =>
+  useQuery({ queryKey: ['settings'], queryFn: () => api<Settings>('/settings'), staleTime: 60_000 });
 export const useDirectory = () =>
   useQuery({ queryKey: ['users'], queryFn: () => api<DirectoryUser[]>('/users'), staleTime: 60_000 });
 
@@ -31,8 +32,27 @@ export function useTimeZone(): string {
 export function useErrorText() {
   const { t } = useTranslation();
   return (e: unknown) =>
-    e instanceof ApiError ? t(`errors.${e.code}`, { defaultValue: e.message || t('errors.generic') }) : t('errors.generic');
+    e instanceof ApiError
+      ? t(`errors.${e.code}`, { defaultValue: e.message || t('errors.generic') })
+      : t('errors.generic');
 }
+
+// ---------- Horloge partagée ----------
+let now = Date.now();
+const clockListeners = new Set<() => void>();
+setInterval(() => {
+  now = Date.now();
+  clockListeners.forEach((l) => l());
+}, 60_000);
+/** Heure courante, rafraîchie chaque minute (rendu pur : pas de Date.now() dans les composants). */
+export const useNow = () =>
+  useSyncExternalStore(
+    (l) => {
+      clockListeners.add(l);
+      return () => clockListeners.delete(l);
+    },
+    () => now,
+  );
 
 // ---------- Dates et fuseaux (sans bibliothèque) ----------
 function parts(date: Date, timeZone: string) {
@@ -94,6 +114,12 @@ export const COLOR_HEX: Record<Color, string> = {
   magenta: '#c43f9a',
 };
 
+/** Couleur affichable : palette, ou couleur personnalisée du board (`#rrggbb`). */
+export const colorHex = (c: TaskColor) => (isHexColor(c) ? c : (COLOR_HEX[c as Color] ?? COLOR_HEX.yellow));
+/** Libellé d'une couleur : légende du board, sinon nom de la palette, sinon code hex. */
+export const colorLabel = (labels: Record<string, string>, c: TaskColor) =>
+  labels[c] || (isHexColor(c) ? c : i18n.t(`colors.${c}`));
+
 // ---------- Composants de base ----------
 export function cx(...c: (string | false | null | undefined)[]) {
   return c.filter(Boolean).join(' ');
@@ -145,10 +171,45 @@ export function Avatar({ name, size = 24 }: { name: string; size?: number }) {
       aria-hidden
       title={name}
       className="inline-flex shrink-0 items-center justify-center rounded-full font-semibold text-white"
-      style={{ width: size, height: size, fontSize: size * 0.42, background: `hsl(${hash} 45% 45%)` }}
+      style={{ width: size, height: size, fontSize: size * 0.42, background: `hsl(${hash} 45% 36%)` }}
     >
       {initials}
     </span>
+  );
+}
+
+/** Confirmation d'une action irréversible (remplace `window.confirm`, bloquant et non stylable). */
+export function ConfirmDialog({
+  open,
+  title,
+  message,
+  confirmLabel,
+  onConfirm,
+  onClose,
+  pending,
+}: {
+  open: boolean;
+  title: string;
+  message: ReactNode;
+  confirmLabel: string;
+  onConfirm: () => void;
+  onClose: () => void;
+  pending?: boolean;
+}) {
+  const { t } = useTranslation();
+  return (
+    <Modal open={open} onClose={onClose} title={title}>
+      <p className="mb-5 text-sm">{message}</p>
+      <div className="flex justify-end gap-2">
+        {/* Focus initial sur « Annuler » : Entrée ne détruit rien par mégarde. */}
+        <button type="button" className={btn} autoFocus onClick={onClose}>
+          {t('common.cancel')}
+        </button>
+        <button type="button" className={btnDanger} disabled={pending} onClick={onConfirm}>
+          {confirmLabel}
+        </button>
+      </div>
+    </Modal>
   );
 }
 

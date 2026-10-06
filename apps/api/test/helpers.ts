@@ -2,7 +2,7 @@ import { Test } from '@nestjs/testing';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
-import { Db } from '../src/db';
+import { Db } from '../src/database/db.service';
 import { setup } from '../src/main';
 
 export const ADMIN_PASSWORD = 'adminadmin34';
@@ -68,7 +68,11 @@ export const loginAdmin = (http: unknown) => login(http, 'admin', 'adminadmin12'
 
 /** Crée un utilisateur par l'admin puis renvoie un client connecté (mot de passe déjà changé). */
 export async function makeUser(http: unknown, admin: Client, username: string) {
-  const r = await admin.post('/admin/users', { username, fullName: username.toUpperCase(), password: 'initial-pass' });
+  const r = await admin.post('/admin/users', {
+    username,
+    fullName: username.toUpperCase(),
+    password: 'initial-pass',
+  });
   if (r.status !== 201) throw new Error(`create ${username}: ${r.status} ${JSON.stringify(r.body)}`);
   return { id: r.body._id as string, client: await login(http, username, 'initial-pass', 'personal-pass') };
 }

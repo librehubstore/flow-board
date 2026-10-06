@@ -40,7 +40,10 @@ describe('Lots 2-3 — boards, permissions, tâches (§ 4.2, 4.3, 4.9, 4.10, 4.1
   it('permissions serveur : lecteur → 403 sur déplacement, non-membre → 404, admin voit sans modifier', async () => {
     const b = await newBoard();
     const t = await task(b._id, 'A');
-    expect((await reader.client.post(`/boards/${b._id}/tasks/${t._id}/move`, { columnId: b.columns[1]._id })).status).toBe(403);
+    expect(
+      (await reader.client.post(`/boards/${b._id}/tasks/${t._id}/move`, { columnId: b.columns[1]._id }))
+        .status,
+    ).toBe(403);
     expect((await reader.client.get(`/boards/${b._id}`)).status).toBe(200);
     expect((await editor.client.patch(`/boards/${b._id}`, { name: 'x' })).status).toBe(403);
     expect((await outsider.client.get(`/boards/${b._id}`)).status).toBe(404);
@@ -60,17 +63,28 @@ describe('Lots 2-3 — boards, permissions, tâches (§ 4.2, 4.3, 4.9, 4.10, 4.1
   it('colonne de complétion : entrer fixe completedAt, sortir l’efface ; date éditable dans le passé seulement', async () => {
     const b = await newBoard();
     const t = await task(b._id, 'A');
-    const done = (await editor.client.post(`/boards/${b._id}/tasks/${t._id}/move`, { columnId: b.completionColumnId })).body;
+    const done = (
+      await editor.client.post(`/boards/${b._id}/tasks/${t._id}/move`, { columnId: b.completionColumnId })
+    ).body;
     expect(Date.now() - new Date(done.completedAt).getTime()).toBeLessThan(5000);
 
     const yesterday = new Date(Date.now() - 86_400_000).toISOString();
-    expect((await editor.client.patch(`/boards/${b._id}/tasks/${t._id}`, { completedAt: yesterday })).body.completedAt).toBe(yesterday);
+    expect(
+      (await editor.client.patch(`/boards/${b._id}/tasks/${t._id}`, { completedAt: yesterday })).body
+        .completedAt,
+    ).toBe(yesterday);
     const future = new Date(Date.now() + 86_400_000).toISOString();
-    expect((await editor.client.patch(`/boards/${b._id}/tasks/${t._id}`, { completedAt: future })).body.code).toBe('COMPLETION_IN_FUTURE');
+    expect(
+      (await editor.client.patch(`/boards/${b._id}/tasks/${t._id}`, { completedAt: future })).body.code,
+    ).toBe('COMPLETION_IN_FUTURE');
 
-    const back = (await editor.client.post(`/boards/${b._id}/tasks/${t._id}/move`, { columnId: b.columns[0]._id })).body;
+    const back = (
+      await editor.client.post(`/boards/${b._id}/tasks/${t._id}/move`, { columnId: b.columns[0]._id })
+    ).body;
     expect(back.completedAt).toBeNull();
-    expect((await editor.client.patch(`/boards/${b._id}/tasks/${t._id}`, { completedAt: yesterday })).body.code).toBe('NOT_COMPLETED');
+    expect(
+      (await editor.client.patch(`/boards/${b._id}/tasks/${t._id}`, { completedAt: yesterday })).body.code,
+    ).toBe('NOT_COMPLETED');
   });
 
   it('création en haut ou en bas, réordonnancement par index', async () => {
@@ -79,10 +93,15 @@ describe('Lots 2-3 — boards, permissions, tâches (§ 4.2, 4.3, 4.9, 4.10, 4.1
     await task(b._id, 'C');
     await task(b._id, 'A', { top: true });
     const order = async () =>
-      (await tasksOf(b._id)).sort((x: { position: number }, y: { position: number }) => x.position - y.position).map((t: { name: string }) => t.name);
+      (await tasksOf(b._id))
+        .sort((x: { position: number }, y: { position: number }) => x.position - y.position)
+        .map((t: { name: string }) => t.name);
     expect(await order()).toEqual(['A', 'B', 'C']);
     const c = (await tasksOf(b._id)).find((t: { name: string }) => t.name === 'C');
-    await editor.client.post(`/boards/${b._id}/tasks/${c._id}/move`, { columnId: b.columns[0]._id, index: 1 });
+    await editor.client.post(`/boards/${b._id}/tasks/${c._id}/move`, {
+      columnId: b.columns[0]._id,
+      index: 1,
+    });
     expect(await order()).toEqual(['A', 'C', 'B']);
   });
 
@@ -92,9 +111,14 @@ describe('Lots 2-3 — boards, permissions, tâches (§ 4.2, 4.3, 4.9, 4.10, 4.1
     await task(b._id, 'last');
     for (let i = 0; i < 60; i++) {
       const t = await task(b._id, `n${i}`);
-      await editor.client.post(`/boards/${b._id}/tasks/${t._id}/move`, { columnId: b.columns[0]._id, index: 1 });
+      await editor.client.post(`/boards/${b._id}/tasks/${t._id}/move`, {
+        columnId: b.columns[0]._id,
+        index: 1,
+      });
     }
-    const sorted = (await tasksOf(b._id)).sort((x: { position: number }, y: { position: number }) => x.position - y.position);
+    const sorted = (await tasksOf(b._id)).sort(
+      (x: { position: number }, y: { position: number }) => x.position - y.position,
+    );
     expect(sorted[0]._id).toBe(first._id);
     expect(sorted[1].name).toBe('n59');
     expect(sorted[sorted.length - 1].name).toBe('last');
@@ -103,7 +127,10 @@ describe('Lots 2-3 — boards, permissions, tâches (§ 4.2, 4.3, 4.9, 4.10, 4.1
   it('détail : responsable membre uniquement, labels créés à la volée et dédoublonnés, sous-tâches', async () => {
     const b = await newBoard();
     const t = await task(b._id, 'A');
-    expect((await editor.client.patch(`/boards/${b._id}/tasks/${t._id}`, { responsibleUserId: outsider.id })).body.code).toBe('NOT_A_MEMBER');
+    expect(
+      (await editor.client.patch(`/boards/${b._id}/tasks/${t._id}`, { responsibleUserId: outsider.id })).body
+        .code,
+    ).toBe('NOT_A_MEMBER');
     const l1 = (await editor.client.post(`/boards/${b._id}/labels`, { name: 'Urgent' })).body;
     const l2 = (await editor.client.post(`/boards/${b._id}/labels`, { name: 'urgent' })).body;
     expect(l2._id).toBe(l1._id);
@@ -127,30 +154,76 @@ describe('Lots 2-3 — boards, permissions, tâches (§ 4.2, 4.3, 4.9, 4.10, 4.1
     await editor.client.patch(`/boards/${b._id}/tasks/${t._id}`, { color: 'red' });
     const events = await ctx.db.events.find({ taskId: t._id }).sort({ at: 1 }).toArray();
     expect(events.map((e) => e.type)).toEqual(['taskCreated', 'taskChanged']);
-    expect(events[1]).toMatchObject({ actorId: editor.id, changes: { color: { old: 'yellow', new: 'red' } } });
+    expect(events[1]).toMatchObject({
+      actorId: editor.id,
+      changes: { color: { old: 'yellow', new: 'red' } },
+    });
   });
 
   it('archivage : disparaît du board, restauré dans sa colonne ou la première si supprimée', async () => {
     const b = await newBoard();
     const t1 = await task(b._id, 'A', { columnId: b.columns[1]._id });
     const t2 = await task(b._id, 'B', { columnId: b.columns[2]._id });
-    expect((await editor.client.post(`/boards/${b._id}/tasks/archive`, { taskIds: [t1._id, t2._id] })).body.archived).toBe(2);
+    expect(
+      (await editor.client.post(`/boards/${b._id}/tasks/archive`, { taskIds: [t1._id, t2._id] })).body
+        .archived,
+    ).toBe(2);
     expect(await tasksOf(b._id)).toHaveLength(0);
     expect((await editor.client.get(`/boards/${b._id}/tasks?archived=true`)).body).toHaveLength(2);
 
-    expect((await editor.client.post(`/boards/${b._id}/tasks/${t1._id}/restore`)).body.columnId).toBe(b.columns[1]._id);
+    expect((await editor.client.post(`/boards/${b._id}/tasks/${t1._id}/restore`)).body.columnId).toBe(
+      b.columns[1]._id,
+    );
     await owner.client.del(`/boards/${b._id}/columns/${b.columns[2]._id}`, {});
-    expect((await editor.client.post(`/boards/${b._id}/tasks/${t2._id}/restore`)).body.columnId).toBe(b.columns[0]._id);
+    expect((await editor.client.post(`/boards/${b._id}/tasks/${t2._id}/restore`)).body.columnId).toBe(
+      b.columns[0]._id,
+    );
   });
 
   it('archiver les tâches terminées avant une date', async () => {
     const b = await newBoard();
     const old = await task(b._id, 'old', { columnId: b.completionColumnId });
     await task(b._id, 'recent', { columnId: b.completionColumnId });
-    await editor.client.patch(`/boards/${b._id}/tasks/${old._id}`, { completedAt: new Date(Date.now() - 10 * 86_400_000) });
-    const r = await editor.client.post(`/boards/${b._id}/tasks/archive-completed`, { before: new Date(Date.now() - 86_400_000) });
+    await editor.client.patch(`/boards/${b._id}/tasks/${old._id}`, {
+      completedAt: new Date(Date.now() - 10 * 86_400_000),
+    });
+    const r = await editor.client.post(`/boards/${b._id}/tasks/archive-completed`, {
+      before: new Date(Date.now() - 86_400_000),
+    });
     expect(r.body.archived).toBe(1);
     expect((await tasksOf(b._id)).map((t: { name: string }) => t.name)).toEqual(['recent']);
+  });
+
+  it('duplication : copie juste sous l’originale, sous-tâches décochées, sans commentaires ; lecteur refusé', async () => {
+    const b = await newBoard();
+    const a = await task(b._id, 'A');
+    await task(b._id, 'B');
+    const label = (await editor.client.post(`/boards/${b._id}/labels`, { name: 'Urgent' })).body;
+    await editor.client.patch(`/boards/${b._id}/tasks/${a._id}`, {
+      color: 'red',
+      labels: [{ id: label._id, pinned: true }],
+      subtasks: [{ _id: 's', name: 'étape', done: true }],
+    });
+    await editor.client.post(`/boards/${b._id}/tasks/${a._id}/comments`, { text: 'ne pas copier' });
+    const copy = (
+      await editor.client.post(`/boards/${b._id}/tasks/${a._id}/duplicate`, { name: 'A (copie)' })
+    ).body;
+    expect(copy).toMatchObject({
+      name: 'A (copie)',
+      color: 'red',
+      commentsCount: 0,
+      labels: [{ id: label._id, pinned: true }],
+    });
+    expect(copy.subtasks).toEqual([expect.objectContaining({ name: 'étape', done: false })]);
+    expect(copy._id).not.toBe(a._id);
+    const order = (await tasksOf(b._id))
+      .sort((x: { position: number }, y: { position: number }) => x.position - y.position)
+      .map((t: { name: string }) => t.name);
+    expect(order).toEqual(['A', 'A (copie)', 'B']);
+    expect((await reader.client.post(`/boards/${b._id}/tasks/${a._id}/duplicate`, {})).status).toBe(403);
+    expect((await editor.client.post(`/boards/${b._id}/tasks/${a._id}/duplicate`, {})).body.name).toBe(
+      'A (copie)',
+    );
   });
 
   it('suppression de tâche réservée à la permission, journalisée', async () => {
@@ -165,21 +238,34 @@ describe('Lots 2-3 — boards, permissions, tâches (§ 4.2, 4.3, 4.9, 4.10, 4.1
     const b = await newBoard();
     const [todo, today] = b.columns;
     await task(b._id, 'A', { columnId: today._id });
-    expect((await owner.client.del(`/boards/${b._id}/columns/${today._id}`, {})).body.code).toBe('DESTINATION_REQUIRED');
-    const r = await owner.client.del(`/boards/${b._id}/columns/${today._id}`, { destinationId: b.completionColumnId });
+    expect((await owner.client.del(`/boards/${b._id}/columns/${today._id}`, {})).body.code).toBe(
+      'DESTINATION_REQUIRED',
+    );
+    const r = await owner.client.del(`/boards/${b._id}/columns/${today._id}`, {
+      destinationId: b.completionColumnId,
+    });
     expect(r.body.columns).toHaveLength(3);
     const moved = (await tasksOf(b._id))[0];
     expect(moved.columnId).toBe(b.completionColumnId);
     expect(moved.completedAt).not.toBeNull();
 
     const added = (await owner.client.post(`/boards/${b._id}/columns`, { name: 'Revue' })).body;
-    const ids = (await owner.client.get(`/boards/${b._id}`)).body.board.columns.map((c: { _id: string }) => c._id);
+    const ids = (await owner.client.get(`/boards/${b._id}`)).body.board.columns.map(
+      (c: { _id: string }) => c._id,
+    );
     expect(ids.indexOf(added._id)).toBe(ids.length - 2); // insérée avant la colonne de complétion
-    expect((await owner.client.put(`/boards/${b._id}/columns/order`, { ids: [...ids].reverse() })).status).toBe(200);
-    expect((await owner.client.put(`/boards/${b._id}/columns/order`, { ids: ids.slice(1) })).body.code).toBe('INVALID_ORDER');
+    expect(
+      (await owner.client.put(`/boards/${b._id}/columns/order`, { ids: [...ids].reverse() })).status,
+    ).toBe(200);
+    expect((await owner.client.put(`/boards/${b._id}/columns/order`, { ids: ids.slice(1) })).body.code).toBe(
+      'INVALID_ORDER',
+    );
 
-    for (const id of ids.slice(1)) await owner.client.del(`/boards/${b._id}/columns/${id}`, { destinationId: todo._id });
-    expect((await owner.client.del(`/boards/${b._id}/columns/${todo._id}`, {})).body.code).toBe('LAST_COLUMN');
+    for (const id of ids.slice(1))
+      await owner.client.del(`/boards/${b._id}/columns/${id}`, { destinationId: todo._id });
+    expect((await owner.client.del(`/boards/${b._id}/columns/${todo._id}`, {})).body.code).toBe(
+      'LAST_COLUMN',
+    );
   });
 
   it('swimlanes : la première rattache les tâches, suppression avec destination, retour à 0', async () => {
@@ -189,23 +275,33 @@ describe('Lots 2-3 — boards, permissions, tâches (§ 4.2, 4.3, 4.9, 4.10, 4.1
     expect((await tasksOf(b._id))[0].swimlaneId).toBe(l1._id);
     const l2 = (await owner.client.post(`/boards/${b._id}/swimlanes`, { name: 'Support' })).body;
     expect((await task(b._id, 'B')).swimlaneId).toBe(l1._id);
-    expect((await owner.client.del(`/boards/${b._id}/swimlanes/${l1._id}`, {})).body.code).toBe('DESTINATION_REQUIRED');
+    expect((await owner.client.del(`/boards/${b._id}/swimlanes/${l1._id}`, {})).body.code).toBe(
+      'DESTINATION_REQUIRED',
+    );
     await owner.client.del(`/boards/${b._id}/swimlanes/${l1._id}`, { destinationId: l2._id });
     expect((await tasksOf(b._id)).every((t: { swimlaneId: string }) => t.swimlaneId === l2._id)).toBe(true);
     await owner.client.del(`/boards/${b._id}/swimlanes/${l2._id}`, {});
-    expect((await tasksOf(b._id)).every((t: { swimlaneId: string | null }) => t.swimlaneId === null)).toBe(true);
+    expect((await tasksOf(b._id)).every((t: { swimlaneId: string | null }) => t.swimlaneId === null)).toBe(
+      true,
+    );
   });
 
   it('membres : il reste toujours un propriétaire', async () => {
     const b = await newBoard();
-    expect((await owner.client.patch(`/boards/${b._id}/members/${owner.id}`, { role: 'editor' })).body.code).toBe('LAST_OWNER');
+    expect(
+      (await owner.client.patch(`/boards/${b._id}/members/${owner.id}`, { role: 'editor' })).body.code,
+    ).toBe('LAST_OWNER');
     expect((await owner.client.del(`/boards/${b._id}/members/${owner.id}`)).status).toBe(409);
-    expect((await editor.client.post(`/boards/${b._id}/members`, { userId: outsider.id, role: 'editor' })).status).toBe(403);
+    expect(
+      (await editor.client.post(`/boards/${b._id}/members`, { userId: outsider.id, role: 'editor' })).status,
+    ).toBe(403);
   });
 
   it('suppression de board : confirmation par le nom, corbeille, restauration admin', async () => {
     const b = await newBoard('À jeter');
-    expect((await owner.client.del(`/boards/${b._id}`, { confirmName: 'mauvais' })).body.code).toBe('CONFIRM_NAME_MISMATCH');
+    expect((await owner.client.del(`/boards/${b._id}`, { confirmName: 'mauvais' })).body.code).toBe(
+      'CONFIRM_NAME_MISMATCH',
+    );
     expect((await owner.client.del(`/boards/${b._id}`, { confirmName: 'À jeter' })).status).toBe(204);
     expect((await owner.client.get(`/boards/${b._id}`)).status).toBe(404);
     const trashed = (await admin.get('/admin/boards')).body.find((x: { _id: string }) => x._id === b._id);

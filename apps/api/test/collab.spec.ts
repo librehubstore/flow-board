@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import { NotificationsService } from '../src/notifications.service';
+import { DueRemindersService } from '../src/tasks/due-reminders.service';
 import { Client, loginAdmin, makeApp, makeUser } from './helpers';
 
 describe('Lots 4-5 — temps réel, commentaires, mentions, notifications, pièces jointes', () => {
@@ -30,10 +30,15 @@ describe('Lots 4-5 — temps réel, commentaires, mentions, notifications, pièc
     await owner.client.post(`/boards/${b._id}/members`, { userId: reader.id, role: 'reader' });
     return b as { _id: string; columns: { _id: string }[]; completionColumnId: string };
   }
-  const task = (boardId: string, name: string) => editor.client.post(`/boards/${boardId}/tasks`, { name }).then((r) => r.body);
+  const task = (boardId: string, name: string) =>
+    editor.client.post(`/boards/${boardId}/tasks`, { name }).then((r) => r.body);
 
   function connect(c: Client) {
-    const s = io(ctx.url, { path: '/api/socket.io', extraHeaders: { cookie: c.cookie }, transports: ['websocket'] });
+    const s = io(ctx.url, {
+      path: '/api/socket.io',
+      extraHeaders: { cookie: c.cookie },
+      transports: ['websocket'],
+    });
     sockets.push(s);
     return s;
   }
@@ -103,31 +108,43 @@ describe('Lots 4-5 — temps réel, commentaires, mentions, notifications, pièc
   });
 
   describe('commentaires, mentions et notifications (§ 4.3, § 9)', () => {
-    const notifs = async (c: Client) => (await c.get('/notifications')).body as { items: { type: string; taskId: string }[]; unread: number };
+    const notifs = async (c: Client) =>
+      (await c.get('/notifications')).body as { items: { type: string; taskId: string }[]; unread: number };
 
     it('mention @identifiant → notification ; le responsable est notifié du commentaire', async () => {
       const b = await newBoard();
       const t = await task(b._id, 'A');
       await editor.client.patch(`/boards/${b._id}/tasks/${t._id}`, { responsibleUserId: reader.id });
       const before = (await notifs(owner.client)).items.length;
-      const c = await editor.client.post(`/boards/${b._id}/tasks/${t._id}/comments`, { text: 'Avis @owner ? (@outsider pas membre)' });
+      const c = await editor.client.post(`/boards/${b._id}/tasks/${t._id}/comments`, {
+        text: 'Avis @owner ? (@outsider pas membre)',
+      });
       expect(c.status).toBe(201);
       const ownerNotifs = await notifs(owner.client);
       expect(ownerNotifs.items.length).toBe(before + 1);
       expect(ownerNotifs.items[0]).toMatchObject({ type: 'mentioned', taskId: t._id });
       expect((await notifs(outsider.client)).items).toHaveLength(0);
       expect((await notifs(reader.client)).items.map((n) => n.type)).toEqual(['commented', 'assigned']);
-      const full = (await owner.client.get(`/boards/${b._id}`)).body.tasks.find((x: { _id: string }) => x._id === t._id);
+      const full = (await owner.client.get(`/boards/${b._id}`)).body.tasks.find(
+        (x: { _id: string }) => x._id === t._id,
+      );
       expect(full.commentsCount).toBe(1);
     });
 
     it('le lecteur ne commente pas ; seul l’auteur modifie ou supprime', async () => {
       const b = await newBoard();
       const t = await task(b._id, 'A');
-      expect((await reader.client.post(`/boards/${b._id}/tasks/${t._id}/comments`, { text: 'x' })).status).toBe(403);
+      expect(
+        (await reader.client.post(`/boards/${b._id}/tasks/${t._id}/comments`, { text: 'x' })).status,
+      ).toBe(403);
       const c = (await editor.client.post(`/boards/${b._id}/tasks/${t._id}/comments`, { text: 'v1' })).body;
-      expect((await owner.client.patch(`/boards/${b._id}/tasks/${t._id}/comments/${c._id}`, { text: 'pirate' })).status).toBe(403);
-      const edited = (await editor.client.patch(`/boards/${b._id}/tasks/${t._id}/comments/${c._id}`, { text: 'v2' })).body;
+      expect(
+        (await owner.client.patch(`/boards/${b._id}/tasks/${t._id}/comments/${c._id}`, { text: 'pirate' }))
+          .status,
+      ).toBe(403);
+      const edited = (
+        await editor.client.patch(`/boards/${b._id}/tasks/${t._id}/comments/${c._id}`, { text: 'v2' })
+      ).body;
       expect(edited.updatedAt).not.toBeNull();
       expect((await editor.client.del(`/boards/${b._id}/tasks/${t._id}/comments/${c._id}`)).status).toBe(204);
       expect((await reader.client.get(`/boards/${b._id}/tasks/${t._id}/comments`)).body).toHaveLength(0);
@@ -174,12 +191,21 @@ describe('Lots 4-5 — temps réel, commentaires, mentions, notifications, pièc
         [soon, new Date(Date.now() + 12 * hour)],
         [late, new Date(Date.now() - 2 * hour)],
       ] as const)
-        await owner.client.patch(`/boards/${b._id}/tasks/${t._id}`, { responsibleUserId: editor.id, dueAt, dueHasTime: true });
-      const service = ctx.app.get(NotificationsService);
-      await service.checkDueDates();
-      await service.checkDueDates();
-      const items = (await notifs(editor.client)).items.filter((n) => n.type.startsWith('due') || n.type === 'overdue');
-      expect(items.map((n) => `${n.type}:${n.taskId === soon._id ? 'soon' : 'late'}`).sort()).toEqual(['dueSoon:soon', 'overdue:late']);
+        await owner.client.patch(`/boards/${b._id}/tasks/${t._id}`, {
+          responsibleUserId: editor.id,
+          dueAt,
+          dueHasTime: true,
+        });
+      const service = ctx.app.get(DueRemindersService);
+      await service.check();
+      await service.check();
+      const items = (await notifs(editor.client)).items.filter(
+        (n) => n.type.startsWith('due') || n.type === 'overdue',
+      );
+      expect(items.map((n) => `${n.type}:${n.taskId === soon._id ? 'soon' : 'late'}`).sort()).toEqual([
+        'dueSoon:soon',
+        'overdue:late',
+      ]);
     });
   });
 
@@ -191,7 +217,10 @@ describe('Lots 4-5 — temps réel, commentaires, mentions, notifications, pièc
         .post(`/api/boards/${b._id}/tasks/${t._id}/attachments`)
         .set('x-flowboard-csrf', '1')
         .attach('files', Buffer.from('bonjour'), { filename: 'note été.txt', contentType: 'text/plain' })
-        .attach('files', Buffer.from([0x89, 0x50, 0x4e, 0x47]), { filename: 'img.png', contentType: 'image/png' });
+        .attach('files', Buffer.from([0x89, 0x50, 0x4e, 0x47]), {
+          filename: 'img.png',
+          contentType: 'image/png',
+        });
       expect(up.status).toBe(201);
       expect(up.body.map((a: { fileName: string }) => a.fileName)).toEqual(['note été.txt', 'img.png']);
 

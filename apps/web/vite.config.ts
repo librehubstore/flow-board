@@ -7,7 +7,9 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
     // Le paquet partagé est consommé en source (TypeScript) par Vite.
-    alias: { '@flowboard/shared': fileURLToPath(new URL('../../packages/shared/src/index.ts', import.meta.url)) },
+    alias: {
+      '@flowboard/shared': fileURLToPath(new URL('../../packages/shared/src/index.ts', import.meta.url)),
+    },
   },
   server: { port: 5173, proxy: { '/api': { target: 'http://localhost:3000', ws: true } } },
 });

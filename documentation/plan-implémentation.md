@@ -27,12 +27,12 @@ Règles de suivi :
 | 3 | MVP | Tâches (cœur), glisser-déposer, journal d'événements | `[x]` |
 | 4 | MVP | Collaboration temps réel | `[x]` |
 | 5 | MVP | Commentaires, mentions, pièces jointes, notifications in-app | `[x]` |
-| 6 | MVP | Tâches récurrentes | `[ ]` |
-| 7 | MVP | Recherche et filtres | `[ ]` |
-| 8 | MVP | Gestion du temps (Pomodoro, chronomètre, saisie manuelle) | `[ ]` |
-| 9 | MVP | Rapport de temps, exports CSV, vue impression | `[ ]` |
-| 10 | MVP | Finitions MVP : raccourcis, accessibilité, performance, exploitation | `[ ]` |
-| 11 | V1 | Enrichissements des boards et historique | `[ ]` |
+| 6 | MVP | Tâches récurrentes | `[x]` |
+| 7 | MVP | Recherche et filtres | `[x]` |
+| 8 | MVP | Gestion du temps (Pomodoro, chronomètre, saisie manuelle) | `[x]` |
+| 9 | MVP | Rapport de temps, exports CSV, vue impression | `[x]` |
+| 10 | MVP | Finitions MVP : raccourcis, accessibilité, performance, exploitation | `[x]` |
+| 11 | V1 | Enrichissements des boards et historique | `[x]` |
 | 12 | V1 | Tâches avancées | `[ ]` |
 | 13 | V1 | Rapports de flux, tableau de bord, rapports planifiés, Excel/PDF | `[ ]` |
 | 14 | V1 | Calendrier et flux iCal | `[ ]` |
@@ -192,62 +192,62 @@ Principes transverses, appliqués dès le lot 0 :
 - [x] L5.7 Tests des déclencheurs et des limites d'upload
 
 ### Lot 6 — Tâches récurrentes (§ 4.4)
-- [ ] L6.1 Modèle `RecurrenceRule` (RRULE) : quotidienne, jours ouvrés, hebdomadaire, mensuelle (jour du mois ou « 2e mardi »), annuelle, tous les N jours/semaines/mois
-- [ ] L6.2 Éditeur de récurrence dans le détail de la tâche (sans saisie RRULE brute)
-- [ ] L6.3 Mode « à la complétion » : occurrence créée dans la colonne de départ avec `startAt`, masquée et visible dans une zone « À venir » repliée jusqu'à cette date
-- [ ] L6.4 Mode « à date fixe » (cron)
-- [ ] L6.5 Copie : nom, description, sous-tâches décochées, labels, couleur, responsable, estimations ; échéance décalée
-- [ ] L6.6 Fin : jamais, après N occurrences, à une date ; une modification de règle ne s'applique qu'aux occurrences futures
-- [ ] L6.7 Tests : critères d'acceptation § 4.4 (hebdomadaire terminée mercredi, limite à 3 occurrences)
+- [x] L6.1 Modèle `RecurrenceRule` (RRULE) : quotidienne, jours ouvrés, hebdomadaire, mensuelle (jour du mois ou « 2e mardi »), annuelle, tous les N jours/semaines/mois
+- [x] L6.2 Éditeur de récurrence dans le détail de la tâche (sans saisie RRULE brute)
+- [x] L6.3 Mode « à la complétion » : occurrence créée dans la colonne de départ avec `startAt`, masquée et visible dans une zone « À venir » repliée jusqu'à cette date
+- [x] L6.4 Mode « à date fixe » (cron)
+- [x] L6.5 Copie : nom, description, sous-tâches décochées, labels, couleur, responsable, estimations ; échéance décalée
+- [x] L6.6 Fin : jamais, après N occurrences, à une date ; une modification de règle ne s'applique qu'aux occurrences futures
+- [x] L6.7 Tests : critères d'acceptation § 4.4 (hebdomadaire terminée mercredi, limite à 3 occurrences)
 
 ### Lot 7 — Recherche et filtres (§ 4.5)
-- [ ] L7.1 Barre de filtres : responsable (« moi », « non assignée »), label, couleur, échéance, texte ; ET entre critères, OU au sein d'un critère ; indicateur de filtre actif ; filtre mémorisé par utilisateur et par board
-- [ ] L7.2 Champ dénormalisé `searchText` et index texte Mongo, mis à jour par le service de mutation (y compris commentaires et sous-tâches)
-- [ ] L7.3 Recherche globale `/` ou `Ctrl+K` sur tous les boards accessibles, option « tâches archivées » (étiquette « Archivée » et bouton Restaurer)
-- [ ] L7.4 Test de performance : 50 000 tâches, moins de 500 ms
-- [ ] L7.5 Tests : critères d'acceptation § 4.5
+- [x] L7.1 Barre de filtres : responsable (« moi », « non assignée »), label, couleur, échéance, texte ; ET entre critères, OU au sein d'un critère ; indicateur de filtre actif ; filtre mémorisé par utilisateur et par board
+- [x] L7.2 Champ dénormalisé `searchText` (recherche par sous-chaîne, sans index texte : DECISIONS D16), mis à jour par le service de mutation (y compris commentaires et sous-tâches)
+- [x] L7.3 Recherche globale `/` ou `Ctrl+K` sur tous les boards accessibles, option « tâches archivées » (étiquette « Archivée » et bouton Restaurer)
+- [x] L7.4 Test de performance : 50 000 tâches, moins de 500 ms
+- [x] L7.5 Tests : critères d'acceptation § 4.5
 
 ### Lot 8 — Gestion du temps (§ 4.6)
-- [ ] L8.1 Modèles `TimeEntry` et `TimeEntryPart` ; un minuteur actif par utilisateur, état côté serveur
-- [ ] L8.2 Barre de minuteur compacte et non bloquante, qui persiste au rechargement et d'un appareil à l'autre
-- [ ] L8.3 Pomodoro : durées paramétrables, pause longue toutes les 4 sessions, son et notification navigateur désactivables
-- [ ] L8.4 Interruption : session « échouée » avec motif (liste paramétrable + texte libre)
-- [ ] L8.5 Chronomètre multi-tâches : changer de tâche clôt la part courante
-- [ ] L8.6 Saisie manuelle : début, fin ou durée, commentaire de 200 caractères maximum, labels de temps (« Facturable »)
-- [ ] L8.7 Droits : l'auteur modifie et supprime ; l'admin et le propriétaire voient toutes les entrées
-- [ ] L8.8 Pomodoro désactivable : aucun élément Pomodoro dans l'UI quand il est désactivé
-- [ ] L8.9 Tests : critères d'acceptation § 4.6
+- [x] L8.1 Modèles `TimeEntry` et `TimeEntryPart` ; un minuteur actif par utilisateur, état côté serveur
+- [x] L8.2 Barre de minuteur compacte et non bloquante, qui persiste au rechargement et d'un appareil à l'autre
+- [x] L8.3 Pomodoro : durées paramétrables, pause longue toutes les 4 sessions, son et notification navigateur désactivables
+- [x] L8.4 Interruption : session « échouée » avec motif (liste paramétrable + texte libre)
+- [x] L8.5 Chronomètre multi-tâches : changer de tâche clôt la part courante
+- [x] L8.6 Saisie manuelle : début, fin ou durée, commentaire de 200 caractères maximum, labels de temps (« Facturable »)
+- [x] L8.7 Droits : l'auteur modifie et supprime ; l'admin et le propriétaire voient toutes les entrées
+- [x] L8.8 Pomodoro désactivable : aucun élément Pomodoro dans l'UI quand il est désactivé
+- [x] L8.9 Tests : critères d'acceptation § 4.6
 
 ### Lot 9 — Rapport de temps, exports, impression (§ 4.7 MVP, § 8)
-- [ ] L9.1 Rapport « temps passé » : filtres (période, utilisateurs, boards, labels de temps), regroupements (utilisateur, tâche, board, label, jour, semaine), totaux, par pipeline d'agrégation Mongo
-- [ ] L9.2 Export CSV du rapport de temps et des tâches d'un board (archivées incluses)
-- [ ] L9.3 Vue impression du board (CSS `@media print`)
-- [ ] L9.4 Tests : critère « totaux par utilisateur = somme des entrées »
+- [x] L9.1 Rapport « temps passé » : filtres (période, utilisateurs, boards, labels de temps), regroupements (utilisateur, tâche, board, label, jour, semaine), totaux, par pipeline d'agrégation Mongo
+- [x] L9.2 Export CSV du rapport de temps et des tâches d'un board (archivées incluses)
+- [x] L9.3 Vue impression du board (CSS `@media print`)
+- [x] L9.4 Tests : critère « totaux par utilisateur = somme des entrées »
 
 ### Lot 10 — Finitions MVP (§ 4.12, § 10)
-- [ ] L10.1 Raccourcis clavier et aide affichée via `?`
-- [ ] L10.2 Audit d'accessibilité (axe-core dans Playwright) dans les deux thèmes ; corrections WCAG 2.1 AA
-- [ ] L10.3 Performance : board de 1 000 tâches affiché en moins de 1,5 s (virtualisation des colonnes si nécessaire), DnD fluide
-- [ ] L10.4 Exploitation : sauvegarde quotidienne documentée (`mongodump` + volume `uploads`), procédure de restauration **testée**, migrations automatiques au démarrage
-- [ ] L10.5 README : déploiement Docker, variables d'environnement, reverse proxy TLS
-- [ ] L10.6 Recette E2E des parcours § 5 « Premier lancement », « Flux principal » et « Collaboration »
+- [x] L10.1 Raccourcis clavier et aide affichée via `?`
+- [x] L10.2 Audit d'accessibilité (axe-core dans Playwright) dans les deux thèmes ; corrections WCAG 2.1 AA
+- [x] L10.3 Performance : board de 1 000 tâches affiché en moins de 1,5 s (virtualisation des colonnes si nécessaire), DnD fluide
+- [x] L10.4 Exploitation : sauvegarde quotidienne documentée (`mongodump` + volume `uploads`), procédure de restauration **testée**, migrations automatiques au démarrage
+- [x] L10.5 README : déploiement Docker, variables d'environnement, reverse proxy TLS
+- [x] L10.6 Recette E2E des parcours § 5 « Premier lancement », « Flux principal » et « Collaboration »
 
-**Jalon MVP** : tous les critères d'acceptation marqués MVP passent ; image Docker publiable.
+**Jalon MVP — atteint le 2026-10-05** : tous les critères d'acceptation marqués MVP passent ; image Docker publiable.
 
 ---
 
 ## 4. Phase V1
 
 ### Lot 11 — Enrichissements des boards et historique (§ 4.2, § 4.3, § 4.9, § 4.10)
-- [ ] L11.1 Onglet « Historique » de la tâche et journal du board filtrable (lecture des `Event` existants)
-- [ ] L11.2 Numérotation des tâches (préfixe + compteur atomique jamais réutilisé)
-- [ ] L11.3 Champs personnalisés (texte, nombre avec unité, liste), affichage optionnel sur la carte, filtres
-- [ ] L11.4 Couleurs personnalisées (hex)
-- [ ] L11.5 WIP exprimé en pomodoros estimés
-- [ ] L11.6 Suivi de colonne et notification à l'entrée d'une tâche
-- [ ] L11.7 Mode mur : plein écran, lecture seule, temps réel
-- [ ] L11.8 Copie de board (structure seule, ou structure + tâches) et modèles de board
-- [ ] L11.9 Rôles personnalisés définis par l'admin
+- [x] L11.1 Onglet « Historique » de la tâche et journal du board filtrable (lecture des `Event` existants)
+- [x] L11.2 Numérotation des tâches (préfixe + compteur atomique jamais réutilisé)
+- [x] L11.3 Champs personnalisés (texte, nombre avec unité, liste), affichage optionnel sur la carte, filtres
+- [x] L11.4 Couleurs personnalisées (hex)
+- [x] L11.5 WIP exprimé en pomodoros estimés
+- [x] L11.6 Suivi de colonne et notification à l'entrée d'une tâche
+- [x] L11.7 Mode mur : plein écran, lecture seule, temps réel
+- [x] L11.8 Copie de board (structure seule, ou structure + tâches) et modèles de board
+- [x] L11.9 Rôles personnalisés définis par l'admin
 
 ### Lot 12 — Tâches avancées (§ 4.3)
 - [ ] L12.1 Relations (*lié à*, *dépend de* / *requis par*), possibles entre boards, indicateur « bloquée »
@@ -283,7 +283,7 @@ Principes transverses, appliqués dès le lot 0 :
 ### Lot 17 — Administration avancée (§ 4.11, § 10)
 - [ ] L17.1 Export complet de l'instance (JSON + fichiers) et restauration
 - [ ] L17.2 RGPD : export des données d'un utilisateur, anonymisation d'un compte désactivé
-- [ ] L17.3 Stockage des PJ compatible S3 (option)
+- [-] L17.3 Stockage des PJ compatible S3 (option) — reporté : stockage local conservé (DECISIONS D3b)
 
 ---
 
@@ -311,8 +311,8 @@ Principes transverses, appliqués dès le lot 0 :
 | 1 | ~~Nom de l'application~~ | **Validé : Flowboard.** Aucune référence au nom de l'application d'origine dans le code, l'UI, les paquets, l'image Docker ni les en-têtes (`X-Flowboard-Signature`). |
 | 2 | ~~Topologie Mongo~~ | **Validé : mono-instance, sans replica set.** |
 | 3 | Avatar utilisateur au MVP | Initiales colorées au MVP, upload d'image au lot 17. |
-| 4 | Stockage S3 des PJ | Disque local au MVP, S3 en V1 (lot 17). |
-| 5 | Pipeline CI distante (GitHub Actions…) | Aucune pour l'instant : scripts de tests locaux uniquement. |
+| 4 | ~~Stockage S3 des PJ~~ | **Validé : disque local**, S3 reporté. |
+| 5 | ~~Pipeline CI~~ | **Validé : GitLab CI/CD**, images web et api séparées (`.gitlab-ci.yml`). |
 
 ## 7. Journal d'avancement
 
@@ -322,3 +322,13 @@ Principes transverses, appliqués dès le lot 0 :
 | 2026-10-04 | — | Validé : stack Vite + React / NestJS, Mongo mono-instance, nom Flowboard |
 | 2026-10-04 | L0–L3 | Interrompu (limite d'usage). Fait : monorepo npm, `packages/shared` (permissions, couleurs, schémas zod, `dueStatus`/`completionGroup` + 4 tests verts), API : `config.ts`, `db.ts`, `errors.ts`, `http.ts` (AccessGuard), `auth.service.ts`, `tasks.service.ts`. Reste : `boards.service.ts`, controllers, `app.module.ts`, `main.ts`, tests Jest, `apps/web`, Docker, Playwright, `DECISIONS.md` (Nest 11 au lieu de 12 ESM ; driver `mongodb` natif au lieu de Mongoose ; `<dialog>` natif au lieu de Radix). |
 | 2026-10-04 | L0–L5 | **Lots 0 à 5 terminés.** Tests verts : 5 `node:test` (shared), 39 Jest (API : critères § 4.1, 4.2, 4.3, 4.9, 4.10, 4.11, temps réel Socket.IO, commentaires, mentions, notifications, PJ), 4 parcours Playwright (premier lancement, création de compte, flux Kanban avec DnD clavier, collaboration temps réel + mention). Image Docker construite et vérifiée avec `docker compose`. ESLint et `tsc` propres. |
+| 2026-10-05 | API | Restructuration de `apps/api` selon les bonnes pratiques NestJS : un module par fonctionnalité (15 modules, graphe sans cycle), services à responsabilité unique (structure et membres des boards séparés, journal des tâches, rappels d'échéance), cascades par événements (`@nestjs/event-emitter`), erreurs des tâches de fond journalisées, sonde de santé vérifiant MongoDB, logs Nest. Ajout de `apps/api/.env` et `.env.local`. Contrat d'API inchangé : 39 tests Jest + 4 E2E verts, image Docker reconstruite. Voir DECISIONS D12 à D15. |
+| 2026-10-05 | DnD | Correction : au lâcher, la carte revenait une image à son point de départ (le cache TanStack n'est notifié qu'au tick suivant) ; la disposition glissée est conservée jusqu'à la mise à jour du cache. |
+| 2026-10-05 | L6 | **Lot 6 terminé** : récurrence quotidienne, jours ouvrés, hebdomadaire (jours choisis), mensuelle (jour ou « n-ième jour »), annuelle, tous les N ; modes « à la complétion » (occurrence masquée jusqu'à sa date, groupe « À venir ») et « à date fixe » ; fin jamais / après N / date. 9 tests Jest + 1 parcours E2E. Correctif : limite d'erreur React (un bug de rendu n'efface plus toute l'application). |
+| 2026-10-05 | L7 | **Lot 7 terminé** : barre de filtres (responsable, labels, couleurs, échéance, texte ; ET entre critères, OU au sein d'un critère), mémorisée par utilisateur et par board ; recherche globale `/` ou `Ctrl+K` sur nom, description, sous-tâches, labels, commentaires, archives comprises en option ; 50 000 tâches < 500 ms. 1 test `node:test`, 6 tests Jest, 1 parcours E2E. |
+| 2026-10-05 | L8 | **Lot 8 terminé** : minuteur unique par utilisateur côté serveur (index unique partiel), Pomodoro (durées paramétrables, pause longue tous les N, son Web Audio + notification navigateur, interruption avec motif), chronomètre multi-tâches par « parts », saisie manuelle (durée, commentaire ≤ 200, labels de temps), temps passé sur la carte, Pomodoro désactivable (aucun élément affiché). Bug trouvé par les tests : `.partial()` zod 4 réappliquait les défauts et écrasait les réglages. 7 tests Jest + 1 parcours E2E. |
+| 2026-10-05 | L9 | **Lot 9 terminé** : rapport « temps passé » (période, utilisateurs, boards, labels ; regroupement utilisateur / tâche / board / label / jour / semaine ; découpage des entrées à cheval sur la période), export CSV (Excel FR : « ; », BOM, formules neutralisées), export CSV des tâches d'un board (archives comprises), vue impression paysage. 6 tests Jest + 1 parcours E2E. |
+| 2026-10-05 | L10 | **Lot 10 terminé — jalon MVP atteint.** Raccourcis clavier (`?` aide, `/` ou Ctrl+K recherche, `n` nouvelle tâche, `f` filtre, `t` minuteur, `[` `]` colonnes). Audit axe-core WCAG 2.1 AA sur 8 écrans, thèmes clair et sombre : 0 violation (corrections : poignée de déplacement dédiée au lieu d'une carte-bouton contenant d'autres boutons, contraste des avatars). Board de 1 000 tâches affiché en 0,8 à 1,3 s selon la charge (cible 1,5 s), sans virtualisation. Sauvegarde/restauration scriptées et **testées** sur volumes détruits (`documentation/exploitation.md`). Bilan : 6 tests `node:test`, 67 Jest, 12 parcours Playwright, lint et Prettier propres, image Docker reconstruite. |
+| 2026-10-05 | Infra | Deux conteneurs applicatifs : `web` (nginx non root : SPA, relais `/api` + WebSocket, CSP) et `api` (NestJS, non exposé), images séparées (49 Mo / 291 Mo). Pipeline GitLab : lint, tests (service Mongo), recette Playwright, build parallèle des deux images, test de fumée de la pile, publication `latest`/version, déploiement manuel SSH avec sauvegarde préalable. Vérifié localement : les 12 parcours E2E passent à travers nginx sur la pile à trois conteneurs. Stockage des pièces jointes : local (S3 reporté). |
+| 2026-10-05 | L11 | **Lot 11 terminé.** Historique de la tâche (« Couleur : Jaune → Rouge ») et journal du board filtrable par type et auteur, paginé ; numérotation (préfixe, compteur atomique jamais réutilisé, tâches existantes numérotées à l'activation, recherche par numéro) ; champs personnalisés texte / nombre avec unité / liste (validation serveur, affichage sur la carte, filtre des listes, recherche) ; couleurs personnalisées (hex) ; WIP en pomodoros estimés ; suivi de colonne avec notification ; mode mur (plein écran, lecture seule, temps réel) ; copie de board (structure seule ou avec tâches) et modèles ; rôles personnalisés (admin) appliqués partout (garde, temps réel, rapports). 9 tests Jest + 1 parcours E2E. Au passage : rendu du board allégé (pas de minuteur ni d'observateur de mutation par carte), test de performance fiabilisé (médiane de 3 chargements après chauffe), réglages sans scintillement. Bilan : 6 `node:test`, 76 Jest, 13 parcours Playwright. |
+| 2026-10-06 | Onboarding | Paramètre d'instance « onboarding » : par l'administration (défaut) ou en libre-service ; inscription email + mot de passe avec validation par lien (24 h, usage unique), connexion Google (OAuth 2.0 code + PKCE, liaison par email vérifié), domaines autorisés, email de validation et d'accueil via l'API Brevo (gabarits FR/EN au nom de l'instance). 9 tests Jest + 1 parcours E2E. Corrigé au passage : formulaire « Instance » qui vidait les champs non modifiés ; ancre de récurrence calculée avec l'ancienne échéance quand les deux arrivaient ensemble (révélé par le changement de jour). Reste : créer le client OAuth dans la console Google librehub.store et la clé Brevo. |

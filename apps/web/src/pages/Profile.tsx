@@ -1,7 +1,13 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { LOCALES, NOTIFICATION_TYPES, THEMES, type UpdateProfileInput } from '@flowboard/shared';
+import {
+  DEFAULT_POMODORO,
+  LOCALES,
+  NOTIFICATION_TYPES,
+  THEMES,
+  type UpdateProfileInput,
+} from '@flowboard/shared';
 import { api, type User } from '../api';
 import { btnPrimary, card, ErrorText, Field, input, useMe } from '../lib';
 import { ChangePassword } from './ChangePassword';
@@ -19,7 +25,10 @@ export function Profile() {
     timezone: me.timezone,
     theme: me.theme,
     notificationPrefs: me.notificationPrefs ?? {},
+    pomodoro: { ...DEFAULT_POMODORO, ...me.pomodoro },
   });
+  const pomodoro = { ...DEFAULT_POMODORO, ...form.pomodoro };
+  const setPomodoro = (patch: Partial<typeof pomodoro>) => set({ pomodoro: { ...pomodoro, ...patch } });
   const save = useMutation({
     mutationFn: () => api<User>('/me', { method: 'PATCH', body: form }),
     onSuccess: (u) => qc.setQueryData(['me'], u),
@@ -106,11 +115,65 @@ export function Profile() {
               <input
                 type="checkbox"
                 checked={form.notificationPrefs?.[type] !== false}
-                onChange={(e) => set({ notificationPrefs: { ...form.notificationPrefs, [type]: e.target.checked } })}
+                onChange={(e) =>
+                  set({ notificationPrefs: { ...form.notificationPrefs, [type]: e.target.checked } })
+                }
               />
               {t(`notifications.prefs.${type}`)}
             </label>
           ))}
+        </fieldset>
+        <fieldset className="space-y-2">
+          <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">
+            {t('profile.pomodoro')}
+          </legend>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={pomodoro.enabled}
+              onChange={(e) => setPomodoro({ enabled: e.target.checked })}
+            />
+            {t('profile.pomodoroEnabled')}
+          </label>
+          {pomodoro.enabled && (
+            <>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {(['workMinutes', 'shortBreakMinutes', 'longBreakMinutes', 'longBreakEvery'] as const).map(
+                  (k) => (
+                    <Field key={k} label={t(`profile.pomodoroFields.${k}`)}>
+                      <input
+                        type="number"
+                        min={1}
+                        max={k === 'workMinutes' ? 180 : k === 'longBreakEvery' ? 12 : 120}
+                        className={input}
+                        value={pomodoro[k]}
+                        onChange={(e) => setPomodoro({ [k]: Number(e.target.value) })}
+                      />
+                    </Field>
+                  ),
+                )}
+              </div>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={pomodoro.sound}
+                  onChange={(e) => setPomodoro({ sound: e.target.checked })}
+                />
+                {t('profile.pomodoroSound')}
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={pomodoro.notify}
+                  onChange={(e) => {
+                    if (e.target.checked && 'Notification' in window) void Notification.requestPermission();
+                    setPomodoro({ notify: e.target.checked });
+                  }}
+                />
+                {t('profile.pomodoroNotify')}
+              </label>
+            </>
+          )}
         </fieldset>
         <ErrorText error={save.error} />
         <div className="flex items-center gap-3">

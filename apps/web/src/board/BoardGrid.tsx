@@ -14,12 +14,17 @@ import {
   type DragOverEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { completionGroup } from '@flowboard/shared';
+import { completionGroup, estimatedPomodoros } from '@flowboard/shared';
 import { api, type Column, type Swimlane, type Task, type User } from '../api';
-import { btnGhost, cx, formatDate, i18n, input, useErrorText, useMe } from '../lib';
+import { btnGhost, cx, formatDate, i18n, input, useErrorText, useMe, useNow } from '../lib';
 import { useBoard, useTaskMutation } from './context';
 import { SortableCard, TaskCard } from './TaskCard';
 
@@ -29,33 +34,54 @@ const parseKey = (key: string) => {
   const [columnId, lane] = key.split('|');
   return { columnId, swimlaneId: lane || null };
 };
-const findCell = (cells: Cells, id: string) => (id in cells ? id : Object.keys(cells).find((k) => cells[k].includes(id)));
+const findCell = (cells: Cells, id: string) =>
+  id in cells ? id : Object.keys(cells).find((k) => cells[k].includes(id));
 
 export function BoardGrid() {
   const { t } = useTranslation();
-  const { data, can } = useBoard();
+  const { data, can, matches } = useBoard();
   const { board, tasks } = data;
   const qc = useQueryClient();
   const errorText = useErrorText();
   const me = useMe().data!;
   const [error, setError] = useState<string | null>(null);
-  const lanes = useMemo<(Swimlane | null)[]>(() => (board.swimlanes.length ? board.swimlanes : [null]), [board.swimlanes]);
+  const lanes = useMemo<(Swimlane | null)[]>(
+    () => (board.swimlanes.length ? board.swimlanes : [null]),
+    [board.swimlanes],
+  );
   const byId = useMemo(() => new Map(tasks.map((x) => [x._id, x])), [tasks]);
+  // Occurrences récurrentes à venir : hors des cellules et des compteurs WIP jusqu'à leur date de début.
+  const now = useNow();
+  const visible = useMemo(
+    () => tasks.filter((x) => !x.startAt || Date.parse(x.startAt) <= now),
+    [tasks, now],
+  );
 
   // Cellules colonne × swimlane ; la colonne de complétion est triée par date de complétion décroissante.
-  const baseCells = useMemo(() => {
+  // `fullCells` : toutes les tâches (sert aux compteurs WIP et aux index envoyés au serveur) ; `baseCells` : filtrées.
+  const fullCells = useMemo(() => {
     const cells: Cells = {};
     for (const c of board.columns) for (const l of lanes) cells[cellKey(c._id, l?._id ?? null)] = [];
-    const sorted = [...tasks].sort((a, b) =>
+    const sorted = [...visible].sort((a, b) =>
       a.columnId === board.completionColumnId && b.columnId === board.completionColumnId
         ? (b.completedAt ?? '').localeCompare(a.completedAt ?? '')
         : a.position - b.position,
     );
     for (const x of sorted) cells[cellKey(x.columnId, x.swimlaneId)]?.push(x._id);
     return cells;
-  }, [tasks, board.columns, board.completionColumnId, lanes]);
+  }, [visible, board.columns, board.completionColumnId, lanes]);
+  const baseCells = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(fullCells).map(([k, ids]) => [k, ids.filter((x) => matches(byId.get(x)!))]),
+      ),
+    [fullCells, matches, byId],
+  );
 
-  const [drag, setDrag] = useState<{ id: string; cells: Cells } | null>(null);
+  // `droppedOn` : instantané des tâches au lâcher. Le cache n'est notifié qu'au tick suivant ; on garde la disposition
+  // glissée jusqu'à ce qu'il change, sinon la carte revient une image à son point de départ.
+  const [drag, setDrag] = useState<{ id: string; cells: Cells; droppedOn?: Task[] } | null>(null);
+  if (drag?.droppedOn && drag.droppedOn !== tasks) setDrag(null);
   const cells = drag?.cells ?? baseCells;
 
   const sensors = useSensors(
@@ -111,36 +137,43 @@ export function BoardGrid() {
     if (!to) return setDrag(null);
     const oldIndex = final[to].indexOf(id);
     const overIndex = final[to].indexOf(String(over.id));
-    if (overIndex >= 0 && oldIndex !== overIndex) final = { ...final, [to]: arrayMove(final[to], oldIndex, overIndex) };
+    if (overIndex >= 0 && oldIndex !== overIndex)
+      final = { ...final, [to]: arrayMove(final[to], oldIndex, overIndex) };
     const index = final[to].indexOf(id);
     const task = byId.get(id)!;
     const { columnId, swimlaneId } = parseKey(to);
     const unchanged = cellKey(task.columnId, task.swimlaneId) === to && baseCells[to].indexOf(id) === index;
-    if (!unchanged) {
-      // Mise à jour optimiste : position entre les voisins, complétion selon la colonne d'arrivée.
-      const before = byId.get(final[to][index - 1])?.position;
-      const after = byId.get(final[to][index + 1])?.position;
-      const position =
-        before === undefined ? (after ?? 0) - 1024 : after === undefined ? before + 1024 : (before + after) / 2;
-      const completedAt =
-        columnId === task.columnId
-          ? task.completedAt
-          : columnId === board.completionColumnId
-            ? new Date().toISOString()
-            : null;
-      move.mutate(
-        { id, index, optimistic: { ...task, columnId, swimlaneId, position, completedAt } },
-        { onError: (e) => setError(errorText(e)) },
-      );
-    }
-    setDrag(null);
+    // Index dans la cellule complète (tâches masquées par le filtre comprises), juste après le voisin visible précédent.
+    const full = fullCells[to].filter((x) => x !== id);
+    const prev = final[to][index - 1];
+    const serverIndex = prev ? full.indexOf(prev) + 1 : 0;
+    if (unchanged) return setDrag(null);
+    // Mise à jour optimiste : position entre les voisins, complétion selon la colonne d'arrivée.
+    const before = byId.get(final[to][index - 1])?.position;
+    const after = byId.get(final[to][index + 1])?.position;
+    const position =
+      before === undefined ? (after ?? 0) - 1024 : after === undefined ? before + 1024 : (before + after) / 2;
+    const completedAt =
+      columnId === task.columnId
+        ? task.completedAt
+        : columnId === board.completionColumnId
+          ? new Date().toISOString()
+          : null;
+    move.mutate(
+      { id, index: serverIndex, optimistic: { ...task, columnId, swimlaneId, position, completedAt } },
+      { onError: (e) => setError(errorText(e)) },
+    );
+    setDrag({ ...d, cells: final, droppedOn: tasks });
   };
 
   const announcements: Announcements = {
     onDragStart: ({ active }) => t('board.dnd.start', { name: byId.get(String(active.id))?.name }),
     onDragOver: ({ active, over }) =>
       over
-        ? t('board.dnd.over', { name: byId.get(String(active.id))?.name, target: describeTarget(String(over.id)) })
+        ? t('board.dnd.over', {
+            name: byId.get(String(active.id))?.name,
+            target: describeTarget(String(over.id)),
+          })
         : undefined,
     onDragEnd: ({ active }) => t('board.dnd.end', { name: byId.get(String(active.id))?.name }),
     onDragCancel: ({ active }) => t('board.dnd.cancel', { name: byId.get(String(active.id))?.name }),
@@ -155,17 +188,24 @@ export function BoardGrid() {
   }
 
   const collapse = useMutation({
-    mutationFn: (v: { columnId: string; collapsed: boolean }) => api('/me/collapsed-columns', { method: 'PUT', body: v }),
+    mutationFn: (v: { columnId: string; collapsed: boolean }) =>
+      api('/me/collapsed-columns', { method: 'PUT', body: v }),
     onMutate: (v) =>
-      qc.setQueryData<User>(['me'], (u) =>
-        u && {
-          ...u,
-          collapsedColumns: v.collapsed ? [...u.collapsedColumns, v.columnId] : u.collapsedColumns.filter((c) => c !== v.columnId),
-        },
+      qc.setQueryData<User>(
+        ['me'],
+        (u) =>
+          u && {
+            ...u,
+            collapsedColumns: v.collapsed
+              ? [...u.collapsedColumns, v.columnId]
+              : u.collapsedColumns.filter((c) => c !== v.columnId),
+          },
       ),
   });
   const collapsed = new Set(me.collapsedColumns);
-  const template = board.columns.map((c) => (collapsed.has(c._id) ? '2.75rem' : 'minmax(17rem, 1fr)')).join(' ');
+  const template = board.columns
+    .map((c) => (collapsed.has(c._id) ? '2.75rem' : 'minmax(17rem, 1fr)'))
+    .join(' ');
   const activeTask = drag ? byId.get(drag.id) : undefined;
 
   return (
@@ -182,15 +222,18 @@ export function BoardGrid() {
         onDragOver={onDragOver}
         onDragEnd={onDragEnd}
         onDragCancel={() => setDrag(null)}
-        accessibility={{ announcements, screenReaderInstructions: { draggable: t('board.dnd.instructions') } }}
+        accessibility={{
+          announcements,
+          screenReaderInstructions: { draggable: t('board.dnd.instructions') },
+        }}
       >
-        <div className="min-h-0 flex-1 overflow-auto p-3">
+        <div className="print-board min-h-0 flex-1 overflow-auto p-3">
           <div className="grid gap-x-3" style={{ gridTemplateColumns: template }}>
             {board.columns.map((c) => (
               <ColumnHeader
                 key={c._id}
                 column={c}
-                count={tasks.filter((x) => x.columnId === c._id).length}
+                tasks={visible.filter((x) => x.columnId === c._id)}
                 collapsed={collapsed.has(c._id)}
                 onToggle={() => collapse.mutate({ columnId: c._id, collapsed: !collapsed.has(c._id) })}
               />
@@ -225,7 +268,10 @@ function Lane({ lane, span, children }: { lane: Swimlane | null; span: number; c
   return (
     <>
       {lane && (
-        <h2 className="sticky left-0 mt-3 border-t border-line pt-2 text-sm font-semibold text-muted" style={{ gridColumn: `1 / span ${span}` }}>
+        <h2
+          className="sticky left-0 mt-3 border-t border-line pt-2 text-sm font-semibold text-muted"
+          style={{ gridColumn: `1 / span ${span}` }}
+        >
           {lane.name}
         </h2>
       )}
@@ -236,19 +282,41 @@ function Lane({ lane, span, children }: { lane: Swimlane | null; span: number; c
 
 function ColumnHeader({
   column,
-  count,
+  tasks,
   collapsed,
   onToggle,
 }: {
   column: Column;
-  count: number;
+  tasks: Task[];
   collapsed: boolean;
   onToggle: () => void;
 }) {
   const { t } = useTranslation();
-  const { data, can, upsert } = useBoard();
+  const { data, can, upsert, wall } = useBoard();
+  const me = useMe().data!;
+  const qc = useQueryClient();
   const [adding, setAdding] = useState(false);
-  const over = column.wipLimit !== null && count > column.wipLimit;
+  const count = tasks.length;
+  // Limite WIP en tâches, ou en pomodoros estimés (spec § 4.2).
+  const pomodoros = column.wipUnit === 'pomodoros';
+  const load = pomodoros ? tasks.reduce((sum, x) => sum + estimatedPomodoros(x.secondsEstimate), 0) : count;
+  const over = column.wipLimit !== null && load > column.wipLimit;
+  const watched = !!me.watchedColumns?.includes(column._id);
+  const watch = useMutation({
+    mutationFn: () =>
+      api('/me/watched-columns', { method: 'PUT', body: { columnId: column._id, watched: !watched } }),
+    onMutate: () =>
+      qc.setQueryData<User>(
+        ['me'],
+        (u) =>
+          u && {
+            ...u,
+            watchedColumns: watched
+              ? (u.watchedColumns ?? []).filter((c) => c !== column._id)
+              : [...(u.watchedColumns ?? []), column._id],
+          },
+      ),
+  });
   if (collapsed)
     return (
       <div className="">
@@ -265,26 +333,63 @@ function ColumnHeader({
     );
   return (
     <div className="sticky top-0 z-10 bg-bg pb-1">
-      <div className={cx('flex items-center gap-1 rounded-t-lg border-b-2 px-1 py-1.5', over ? 'border-danger' : 'border-line')}>
-        <h2 className={cx('min-w-0 truncate font-semibold', over && 'text-danger')} title={column.description || undefined}>
+      <div
+        className={cx(
+          'flex items-center gap-1 rounded-t-lg border-b-2 px-1 py-1.5',
+          over ? 'border-danger' : 'border-line',
+        )}
+      >
+        <h2
+          className={cx('min-w-0 truncate font-semibold', over && 'text-danger')}
+          title={column.description || undefined}
+        >
           {column.name}
         </h2>
         <span className={cx('text-xs tabular-nums', over ? 'font-bold text-danger' : 'text-muted')}>
-          {column.wipLimit !== null ? `${count} / ${column.wipLimit}` : count}
+          {column.wipLimit !== null ? `${load}${pomodoros ? ' 🍅' : ''} / ${column.wipLimit}` : count}
         </span>
         {over && <span className="text-xs font-semibold text-danger">· {t('board.wipExceeded')}</span>}
-        <span className="ml-auto flex items-center">
+        <span className={cx('ml-auto flex items-center', wall && 'hidden')}>
+          <button
+            type="button"
+            className={cx(btnGhost, watched && 'text-accent')}
+            aria-pressed={watched}
+            aria-label={`${t('board.watch')} — ${column.name}`}
+            title={t('board.watch')}
+            onClick={() => watch.mutate()}
+          >
+            {watched ? '●' : '○'}
+          </button>
           {can('task.create') && !data.board.swimlanes.length && (
-            <button type="button" className={btnGhost} onClick={() => setAdding(true)} title={t('board.addTaskTop')} aria-label={`${t('board.addTaskTop')} — ${column.name}`}>
+            <button
+              type="button"
+              className={btnGhost}
+              onClick={() => setAdding(true)}
+              title={t('board.addTaskTop')}
+              aria-label={`${t('board.addTaskTop')} — ${column.name}`}
+            >
               +
             </button>
           )}
-          <button type="button" className={btnGhost} onClick={onToggle} aria-label={`${t('board.collapse')} — ${column.name}`}>
+          <button
+            type="button"
+            className={btnGhost}
+            onClick={onToggle}
+            aria-label={`${t('board.collapse')} — ${column.name}`}
+          >
             ‹
           </button>
         </span>
       </div>
-      {adding && <QuickAdd columnId={column._id} laneId={null} top onClose={() => setAdding(false)} onCreated={upsert} />}
+      {adding && (
+        <QuickAdd
+          columnId={column._id}
+          laneId={null}
+          top
+          onClose={() => setAdding(false)}
+          onCreated={upsert}
+        />
+      )}
     </div>
   );
 }
@@ -295,13 +400,21 @@ function ArchiveBefore() {
   const [date, setDate] = useState('');
   const [result, setResult] = useState<number | null>(null);
   const archive = useMutation({
-    mutationFn: () => api<{ archived: number }>(`/boards/${data.board._id}/tasks/archive-completed`, { body: { before: new Date(date) } }),
+    mutationFn: () =>
+      api<{ archived: number }>(`/boards/${data.board._id}/tasks/archive-completed`, {
+        body: { before: new Date(date) },
+      }),
     onSuccess: (r) => {
       setResult(r.archived);
       const limit = new Date(date).getTime();
       onArchived(
         data.tasks
-          .filter((x) => x.columnId === data.board.completionColumnId && x.completedAt && new Date(x.completedAt).getTime() < limit)
+          .filter(
+            (x) =>
+              x.columnId === data.board.completionColumnId &&
+              x.completedAt &&
+              new Date(x.completedAt).getTime() < limit,
+          )
           .map((x) => x._id),
       );
     },
@@ -316,7 +429,13 @@ function ArchiveBefore() {
           if (date) archive.mutate();
         }}
       >
-        <input type="date" className={input} aria-label={t('board.archiveBefore')} value={date} onChange={(e) => setDate(e.target.value)} />
+        <input
+          type="date"
+          className={input}
+          aria-label={t('board.archiveBefore')}
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+        />
         <button className={btnGhost}>{t('common.confirm')}</button>
       </form>
       {result !== null && <p role="status">{t('board.archiveBeforeDone', { count: result })}</p>}
@@ -324,7 +443,19 @@ function ArchiveBefore() {
   );
 }
 
-function Cell({ id, ids, column, laneId, canDrag }: { id: string; ids: string[]; column: Column; laneId: string | null; canDrag: boolean }) {
+function Cell({
+  id,
+  ids,
+  column,
+  laneId,
+  canDrag,
+}: {
+  id: string;
+  ids: string[];
+  column: Column;
+  laneId: string | null;
+  canDrag: boolean;
+}) {
   const { t } = useTranslation();
   const { data, can, upsert, tz } = useBoard();
   const { setNodeRef, isOver } = useDroppable({ id });
@@ -348,7 +479,11 @@ function Cell({ id, ids, column, laneId, canDrag }: { id: string; ids: string[];
   }
   const visible = isCompletion ? groups.flatMap((g) => (openGroups.has(g.key) ? g.ids : [])) : ids;
   const label = (key: string) =>
-    key === 'today' ? t('board.today') : key === 'yesterday' ? t('board.yesterday') : formatDate(`${key}T12:00:00Z`, i18n.language, 'UTC');
+    key === 'today'
+      ? t('board.today')
+      : key === 'yesterday'
+        ? t('board.yesterday')
+        : formatDate(`${key}T12:00:00Z`, i18n.language, 'UTC');
 
   const cards = (list: string[]) =>
     list.map((taskId) => {
@@ -361,9 +496,14 @@ function Cell({ id, ids, column, laneId, canDrag }: { id: string; ids: string[];
       ref={setNodeRef}
       role="group"
       aria-label={laneName ? `${column.name} / ${laneName}` : column.name}
-      className={cx('flex min-h-24 flex-col gap-2 rounded-lg p-1.5 transition-colors', isOver ? 'bg-accent/10' : 'bg-surface-2/60')}
+      className={cx(
+        'flex min-h-24 flex-col gap-2 rounded-lg p-1.5 transition-colors',
+        isOver ? 'bg-accent/10' : 'bg-surface-2/60',
+      )}
     >
-      {isCompletion && can('task.edit') && laneId === (data.board.swimlanes[0]?._id ?? null) && <ArchiveBefore />}
+      {isCompletion && can('task.edit') && laneId === (data.board.swimlanes[0]?._id ?? null) && (
+        <ArchiveBefore />
+      )}
       <SortableContext id={id} items={visible} strategy={verticalListSortingStrategy}>
         {isCompletion
           ? groups.map((g) => (
@@ -389,15 +529,62 @@ function Cell({ id, ids, column, laneId, canDrag }: { id: string; ids: string[];
             ))
           : cards(ids)}
       </SortableContext>
+      <Upcoming columnId={column._id} laneId={laneId} />
       {can('task.create') &&
         (adding ? (
-          <QuickAdd columnId={column._id} laneId={laneId} onClose={() => setAdding(false)} onCreated={upsert} />
+          <QuickAdd
+            columnId={column._id}
+            laneId={laneId}
+            onClose={() => setAdding(false)}
+            onCreated={upsert}
+          />
         ) : (
-          <button type="button" className={cx(btnGhost, 'no-print justify-start')} onClick={() => setAdding(true)}>
+          <button
+            type="button"
+            className={cx(btnGhost, 'no-print justify-start')}
+            onClick={() => setAdding(true)}
+            data-new-task={
+              column._id === data.board.columns[0]._id && laneId === (data.board.swimlanes[0]?._id ?? null)
+                ? ''
+                : undefined
+            }
+          >
             + {t('board.addTask')}
           </button>
         ))}
     </div>
+  );
+}
+
+/** Occurrences à venir de la cellule, repliées ; cliquables pour ouvrir le détail. */
+function Upcoming({ columnId, laneId }: { columnId: string; laneId: string | null }) {
+  const { t } = useTranslation();
+  const { data, openTask, tz } = useBoard();
+  const now = useNow();
+  const list = data.tasks
+    .filter(
+      (x) => x.columnId === columnId && x.swimlaneId === laneId && x.startAt && Date.parse(x.startAt) > now,
+    )
+    .sort((a, b) => a.startAt!.localeCompare(b.startAt!));
+  if (!list.length) return null;
+  return (
+    <details className="text-xs text-muted">
+      <summary className="cursor-pointer py-1">{t('board.upcoming', { count: list.length })}</summary>
+      <ul className="space-y-1">
+        {list.map((x) => (
+          <li key={x._id}>
+            <button
+              type="button"
+              className={cx(btnGhost, 'w-full justify-between')}
+              onClick={() => openTask(x._id)}
+            >
+              <span className="truncate">↻ {x.name}</span>
+              <span>{formatDate(x.startAt!, i18n.language, tz)}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }
 
@@ -420,7 +607,8 @@ function QuickAdd({
   const errorText = useErrorText();
   const [name, setName] = useState('');
   const create = useMutation({
-    mutationFn: (n: string) => api<Task>(`/boards/${data.board._id}/tasks`, { body: { name: n, columnId, swimlaneId: laneId, top } }),
+    mutationFn: (n: string) =>
+      api<Task>(`/boards/${data.board._id}/tasks`, { body: { name: n, columnId, swimlaneId: laneId, top } }),
     onSuccess: onCreated,
   });
   return (

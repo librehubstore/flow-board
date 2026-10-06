@@ -83,7 +83,24 @@ dialog::backdrop {
 }
 @media print {
   header,
-  .no-print {
+  .no-print,
+  [role='timer'] {
     display: none !important;
+  }
+  body {
+    background: #fff;
+    color: #000;
+  }
+  .print-board,
+  main {
+    overflow: visible !important;
+    min-height: 0 !important;
+  }
+  .print-board [data-task] {
+    break-inside: avoid;
+  }
+  @page {
+    size: landscape;
+    margin: 1cm;
   }
 }

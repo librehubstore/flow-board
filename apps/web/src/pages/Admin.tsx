@@ -1,11 +1,31 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { LOCALES, type UpdateSettingsInput } from '@flowboard/shared';
-import { api, type Board, type Settings, type User } from '../api';
-import { btn, btnGhost, btnPrimary, card, cx, ErrorText, Field, formatDate, i18n, input, useDirectory, useSettings, useTimeZone } from '../lib';
+import {
+  LOCALES,
+  ONBOARDING_MODES,
+  PERMISSIONS,
+  type Permission,
+  type UpdateSettingsInput,
+} from '@flowboard/shared';
+import { api, type Board, type Role, type Settings, type User } from '../api';
+import {
+  btn,
+  btnGhost,
+  btnPrimary,
+  card,
+  cx,
+  ErrorText,
+  Field,
+  formatDate,
+  i18n,
+  input,
+  useDirectory,
+  useSettings,
+  useTimeZone,
+} from '../lib';
 
-const TABS = ['users', 'boards', 'settings', 'audit'] as const;
+const TABS = ['users', 'boards', 'customRoles', 'settings', 'audit'] as const;
 
 export function Admin() {
   const { t } = useTranslation();
@@ -20,7 +40,10 @@ export function Admin() {
             role="tab"
             type="button"
             aria-selected={tab === k}
-            className={cx('-mb-px border-b-2 px-3 py-2 text-sm font-medium', tab === k ? 'border-accent text-fg' : 'border-transparent text-muted')}
+            className={cx(
+              '-mb-px border-b-2 px-3 py-2 text-sm font-medium',
+              tab === k ? 'border-accent text-fg' : 'border-transparent text-muted',
+            )}
             onClick={() => setTab(k)}
           >
             {t(`admin.${k}`)}
@@ -31,6 +54,7 @@ export function Admin() {
         {tab === 'users' && <Users />}
         {tab === 'boards' && <AdminBoards />}
         {tab === 'settings' && <InstanceSettings />}
+        {tab === 'customRoles' && <Roles />}
         {tab === 'audit' && <Audit />}
       </div>
     </div>
@@ -62,10 +86,12 @@ function Users() {
   });
   const reset = useMutation({
     mutationFn: (u: User) =>
-      api<{ temporaryPassword: string }>(`/admin/users/${u._id}/reset-password`, { method: 'POST' }).then((r) => ({
-        user: u.username,
-        password: r.temporaryPassword,
-      })),
+      api<{ temporaryPassword: string }>(`/admin/users/${u._id}/reset-password`, { method: 'POST' }).then(
+        (r) => ({
+          user: u.username,
+          password: r.temporaryPassword,
+        }),
+      ),
     onSuccess: setTemp,
   });
 
@@ -88,7 +114,12 @@ function Users() {
           />
         </Field>
         <Field label={t('admin.fullName')}>
-          <input className={input} required value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
+          <input
+            className={input}
+            required
+            value={form.fullName}
+            onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+          />
         </Field>
         <Field label={t('admin.initialPassword')}>
           <input
@@ -101,7 +132,11 @@ function Users() {
           />
         </Field>
         <Field label={t('admin.role')}>
-          <select className={input} value={form.globalRole} onChange={(e) => setForm({ ...form, globalRole: e.target.value })}>
+          <select
+            className={input}
+            value={form.globalRole}
+            onChange={(e) => setForm({ ...form, globalRole: e.target.value })}
+          >
             <option value="user">{t('admin.roles.user')}</option>
             <option value="admin">{t('admin.roles.admin')}</option>
           </select>
@@ -148,12 +183,16 @@ function Users() {
                   </select>
                 </td>
                 <td className="p-2">{t(`admin.statuses.${u.status}`)}</td>
-                <td className="p-2">{u.lastLoginAt ? formatDate(u.lastLoginAt, i18n.language, tz, true) : t('admin.never')}</td>
+                <td className="p-2">
+                  {u.lastLoginAt ? formatDate(u.lastLoginAt, i18n.language, tz, true) : t('admin.never')}
+                </td>
                 <td className="flex flex-wrap gap-1 p-2">
                   <button
                     type="button"
                     className={btn}
-                    onClick={() => update.mutate({ id: u._id, status: u.status === 'active' ? 'disabled' : 'active' })}
+                    onClick={() =>
+                      update.mutate({ id: u._id, status: u.status === 'active' ? 'disabled' : 'active' })
+                    }
                   >
                     {u.status === 'active' ? t('admin.disable') : t('admin.enable')}
                   </button>
@@ -177,9 +216,13 @@ function AdminBoards() {
   const users = useDirectory().data ?? [];
   const boards = useQuery({ queryKey: ['admin', 'boards'], queryFn: () => api<Board[]>('/admin/boards') });
   const done = () => void qc.invalidateQueries({ queryKey: ['admin', 'boards'] });
-  const restore = useMutation({ mutationFn: (id: string) => api(`/admin/boards/${id}/restore`, { method: 'POST' }), onSuccess: done });
+  const restore = useMutation({
+    mutationFn: (id: string) => api(`/admin/boards/${id}/restore`, { method: 'POST' }),
+    onSuccess: done,
+  });
   const transfer = useMutation({
-    mutationFn: ({ id, userId }: { id: string; userId: string }) => api(`/admin/boards/${id}/transfer`, { body: { userId } }),
+    mutationFn: ({ id, userId }: { id: string; userId: string }) =>
+      api(`/admin/boards/${id}/transfer`, { body: { userId } }),
     onSuccess: done,
   });
   const name = (id: string) => users.find((u) => u._id === id)?.fullName ?? '?';
@@ -248,7 +291,8 @@ function InstanceSettings() {
   const qc = useQueryClient();
   const current = useSettings().data;
   const [form, setForm] = useState<UpdateSettingsInput | null>(null);
-  const value = form ?? current;
+  // Valeurs serveur + modifications en cours (le formulaire ne garde que les champs modifiés).
+  const value = current && { ...current, ...form };
   const save = useMutation({
     mutationFn: () => api<Settings>('/admin/settings', { method: 'PATCH', body: form }),
     onSuccess: (s) => {
@@ -267,10 +311,19 @@ function InstanceSettings() {
       }}
     >
       <Field label={t('admin.instanceName')}>
-        <input className={input} required value={value.instanceName} onChange={(e) => set({ instanceName: e.target.value })} />
+        <input
+          className={input}
+          required
+          value={value.instanceName}
+          onChange={(e) => set({ instanceName: e.target.value })}
+        />
       </Field>
       <Field label={t('admin.defaultLocale')}>
-        <select className={input} value={value.defaultLocale} onChange={(e) => set({ defaultLocale: e.target.value as 'fr' })}>
+        <select
+          className={input}
+          value={value.defaultLocale}
+          onChange={(e) => set({ defaultLocale: e.target.value as 'fr' })}
+        >
           {LOCALES.map((l) => (
             <option key={l} value={l}>
               {l === 'fr' ? 'Français' : 'English'}
@@ -279,7 +332,11 @@ function InstanceSettings() {
         </select>
       </Field>
       <Field label={t('admin.defaultTimezone')}>
-        <input className={input} value={value.defaultTimezone} onChange={(e) => set({ defaultTimezone: e.target.value })} />
+        <input
+          className={input}
+          value={value.defaultTimezone}
+          onChange={(e) => set({ defaultTimezone: e.target.value })}
+        />
       </Field>
       <Field label={t('admin.maxAttachmentMb')}>
         <input
@@ -291,6 +348,64 @@ function InstanceSettings() {
           onChange={(e) => set({ maxAttachmentMb: Number(e.target.value) })}
         />
       </Field>
+      <fieldset className="space-y-2 border-t border-line pt-3">
+        <legend className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">
+          {t('admin.onboarding')}
+        </legend>
+        {ONBOARDING_MODES.map((m) => (
+          <label key={m} className="flex items-start gap-2 text-sm">
+            <input
+              type="radio"
+              name="onboarding"
+              className="mt-1"
+              checked={value.onboarding === m}
+              onChange={() => set({ onboarding: m })}
+            />
+            <span>
+              <strong className="block">{t(`admin.onboardingModes.${m}`)}</strong>
+              <span className="text-muted">{t(`admin.onboardingHints.${m}`)}</span>
+            </span>
+          </label>
+        ))}
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+          {t('admin.registrationMethods')}
+        </p>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={value.registration.password}
+            onChange={(e) => set({ registration: { ...value.registration, password: e.target.checked } })}
+          />
+          {t('admin.methodPassword')}
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={value.registration.google}
+            disabled={!current?.googleAvailable}
+            onChange={(e) => set({ registration: { ...value.registration, google: e.target.checked } })}
+          />
+          {t('admin.methodGoogle')}
+          {!current?.googleAvailable && (
+            <span className="text-xs text-muted">({t('admin.googleNotConfigured')})</span>
+          )}
+        </label>
+        <Field label={t('admin.allowedDomains')} hint={t('admin.allowedDomainsHint')}>
+          <input
+            className={input}
+            placeholder="librehub.store"
+            defaultValue={value.allowedDomains.join(', ')}
+            onBlur={(e) =>
+              set({
+                allowedDomains: e.target.value
+                  .split(/[\s,;]+/)
+                  .map((d) => d.trim().toLowerCase())
+                  .filter(Boolean),
+              })
+            }
+          />
+        </Field>
+      </fieldset>
       <ErrorText error={save.error} />
       <button className={btnPrimary} disabled={!form || save.isPending}>
         {t('common.save')}
@@ -305,7 +420,10 @@ function Audit() {
   const users = useDirectory().data ?? [];
   const audit = useQuery({
     queryKey: ['admin', 'audit'],
-    queryFn: () => api<{ _id: string; actorId: string; action: string; targetId: string | null; at: string }[]>('/admin/audit'),
+    queryFn: () =>
+      api<{ _id: string; actorId: string; action: string; targetId: string | null; at: string }[]>(
+        '/admin/audit',
+      ),
   });
   const name = (id: string | null) => users.find((u) => u._id === id)?.username ?? id ?? '';
   return (
@@ -329,5 +447,102 @@ function Audit() {
         ))}
       </tbody>
     </table>
+  );
+}
+
+/** Rôles personnalisés (spec § 4.10) : un ensemble de permissions unitaires, attribuable dans tout board. */
+function Roles() {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const roles = useQuery({ queryKey: ['roles'], queryFn: () => api<Role[]>('/roles') });
+  const refresh = () => qc.invalidateQueries({ queryKey: ['roles'] });
+  const [draft, setDraft] = useState<{ name: string; permissions: Permission[] }>({
+    name: '',
+    permissions: ['board.view'],
+  });
+  const create = useMutation({
+    mutationFn: () => api('/admin/roles', { body: draft }),
+    onSuccess: () => {
+      setDraft({ name: '', permissions: ['board.view'] });
+      void refresh();
+    },
+  });
+  const update = useMutation({
+    mutationFn: (r: Role) =>
+      api(`/admin/roles/${r._id}`, { method: 'PATCH', body: { name: r.name, permissions: r.permissions } }),
+    onSuccess: refresh,
+  });
+  const del = useMutation({
+    mutationFn: (id: string) => api(`/admin/roles/${id}`, { method: 'DELETE' }),
+    onSuccess: refresh,
+  });
+  const toggle = (list: Permission[], p: Permission) =>
+    list.includes(p) ? list.filter((x) => x !== p) : [...list, p];
+  const checkboxes = (value: Permission[], onChange: (v: Permission[]) => void, name: string) => (
+    <div className="grid gap-1 sm:grid-cols-3">
+      {PERMISSIONS.map((p) => (
+        <label key={p} className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            aria-label={`${t(`permissions.${p}`)} — ${name}`}
+            checked={value.includes(p)}
+            disabled={p === 'board.view'}
+            onChange={() => onChange(toggle(value, p))}
+          />
+          {t(`permissions.${p}`)}
+        </label>
+      ))}
+    </div>
+  );
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted">{t('admin.rolesHint')}</p>
+      {roles.data?.map((r) => (
+        <div key={r._id} className={`${card} space-y-2 p-4`}>
+          <div className="flex items-center gap-2">
+            <input
+              className={`${input} flex-1`}
+              aria-label={`${t('common.name')} — ${r.name}`}
+              defaultValue={r.name}
+              key={r.name}
+              maxLength={50}
+              onBlur={(e) =>
+                e.target.value.trim() &&
+                e.target.value !== r.name &&
+                update.mutate({ ...r, name: e.target.value.trim() })
+              }
+            />
+            <button type="button" className={btn} onClick={() => del.mutate(r._id)}>
+              {t('common.delete')}
+            </button>
+          </div>
+          {checkboxes(r.permissions, (permissions) => update.mutate({ ...r, permissions }), r.name)}
+        </div>
+      ))}
+      <form
+        className={`${card} space-y-2 p-4`}
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (draft.name.trim()) create.mutate();
+        }}
+      >
+        <Field label={t('admin.newRole')}>
+          <input
+            className={input}
+            required
+            maxLength={50}
+            value={draft.name}
+            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+          />
+        </Field>
+        {checkboxes(
+          draft.permissions,
+          (permissions) => setDraft({ ...draft, permissions }),
+          t('admin.newRole'),
+        )}
+        <button className={btnPrimary}>{t('common.create')}</button>
+      </form>
+      <ErrorText error={create.error ?? update.error ?? del.error ?? roles.error} />
+    </div>
   );
 }

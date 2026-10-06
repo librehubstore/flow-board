@@ -1,4 +1,14 @@
-import { CSRF_HEADER, type BoardRole, type Color, type NotificationType, type Permission } from '@flowboard/shared';
+import {
+  CSRF_HEADER,
+  type BoardRole,
+  type TaskColor,
+  type CUSTOM_FIELD_TYPES,
+  type NotificationType,
+  type Permission,
+  type BoardFilter,
+  type PomodoroSettings,
+  type RecurrenceInput,
+} from '@flowboard/shared';
 
 // ---------- Formes JSON renvoyées par l'API ----------
 export interface User {
@@ -7,13 +17,16 @@ export interface User {
   fullName: string;
   email: string | null;
   globalRole: 'admin' | 'user';
-  status: 'active' | 'disabled';
+  status: 'active' | 'disabled' | 'pending';
   mustChangePassword: boolean;
   locale: 'fr' | 'en' | null;
   timezone: string | null;
   theme: 'light' | 'dark' | 'system';
   collapsedColumns: string[];
   notificationPrefs?: Partial<Record<NotificationType, boolean>>;
+  boardFilters?: Record<string, BoardFilter>;
+  pomodoro?: Partial<PomodoroSettings>;
+  watchedColumns?: string[];
   createdAt: string;
   lastLoginAt: string | null;
 }
@@ -22,12 +35,18 @@ export interface Settings {
   defaultLocale: 'fr' | 'en';
   defaultTimezone: string;
   maxAttachmentMb: number;
+  onboarding: 'admin' | 'open';
+  registration: { password: boolean; google: boolean };
+  allowedDomains: string[];
+  /** Client OAuth Google configuré côté serveur. */
+  googleAvailable: boolean;
 }
 export interface Column {
   _id: string;
   name: string;
   description: string;
   wipLimit: number | null;
+  wipUnit?: 'tasks' | 'pomodoros';
 }
 export interface Swimlane {
   _id: string;
@@ -47,9 +66,35 @@ export interface Board {
   completionColumnId: string;
   members: { userId: string; role: BoardRole }[];
   labels: Label[];
-  colorLabels: Partial<Record<Color, string>>;
+  colorLabels: Record<string, string>;
+  customColors?: string[];
+  customFields?: CustomField[];
+  taskNumbering?: { enabled: boolean; prefix: string };
+  isTemplate?: boolean;
   createdAt: string;
   deletedAt: string | null;
+}
+export interface CustomField {
+  _id: string;
+  name: string;
+  type: (typeof CUSTOM_FIELD_TYPES)[number];
+  numberPrefix: string;
+  numberSuffix: string;
+  options: { _id: string; label: string }[];
+  showOnCard: boolean;
+}
+export interface Role {
+  _id: string;
+  name: string;
+  permissions: Permission[];
+}
+export interface TaskEvent {
+  _id: string;
+  taskId: string | null;
+  actorId: string;
+  type: string;
+  changes: Record<string, { old: unknown; new: unknown }>;
+  at: string;
 }
 export interface Member {
   userId: string;
@@ -73,7 +118,9 @@ export interface Task {
   position: number;
   name: string;
   description: string;
-  color: Color;
+  color: TaskColor;
+  number?: number | null;
+  customFields?: Record<string, string | number>;
   responsibleUserId: string | null;
   collaboratorIds: string[];
   labels: { id: string; pinned: boolean }[];
@@ -86,8 +133,13 @@ export interface Task {
   dueReachedAt: string | null;
   completedAt: string | null;
   archivedAt: string | null;
+  /** Occurrence récurrente masquée jusqu'à cette date. */
+  startAt?: string | null;
+  recurrence?:
+    (Omit<RecurrenceInput, 'endUntil'> & { endUntil: string | null; anchor: string; index: number }) | null;
   commentsCount: number;
   attachmentsCount: number;
+  spentSeconds?: number;
   createdById: string;
   createdAt: string;
   updatedAt: string;
@@ -144,7 +196,10 @@ export class ApiError extends Error {
   }
 }
 
-export async function api<T = unknown>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
+export async function api<T = unknown>(
+  path: string,
+  init: { method?: string; body?: unknown } = {},
+): Promise<T> {
   const isForm = init.body instanceof FormData;
   const res = await fetch(`/api${path}`, {
     method: init.method ?? (init.body === undefined ? 'GET' : 'POST'),

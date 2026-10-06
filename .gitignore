@@ -4,6 +4,8 @@ coverage/
 test-results/
 playwright-report/
 uploads/
-.env
+.env.local
+.env.*.local
 *.log
 .vscode/*
+/apps/api/.env
