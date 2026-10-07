@@ -100,7 +100,7 @@ build:
     matrix:
       - APP: [api, web]
   script:
-    - IMAGE="$CI_REGISTRY_IMAGE/$APP"
+    - IMAGE="$CI_REGISTRY_IMAGE/flow-board-$APP"
     - docker pull "$IMAGE:latest" || true
     - >
       docker build
@@ -157,7 +157,7 @@ release:
   script:
     - |
       for APP in api web; do
-        IMAGE="$CI_REGISTRY_IMAGE/$APP"
+        IMAGE="$CI_REGISTRY_IMAGE/flow-board-$APP"
         docker pull "$IMAGE:$CI_COMMIT_SHORT_SHA"
         docker tag "$IMAGE:$CI_COMMIT_SHORT_SHA" "$IMAGE:$RELEASE_TAG"
         docker push "$IMAGE:$RELEASE_TAG"

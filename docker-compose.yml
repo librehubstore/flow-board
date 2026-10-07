@@ -3,7 +3,7 @@
 # Images de la CI : REGISTRY=registry.gitlab.example.org/groupe/flowboard TAG=<sha> docker compose pull
 services:
   web:
-    image: ${REGISTRY:-flowboard}/web:${TAG:-latest}
+    image: ${REGISTRY:-librehubstore}/flow-board-web:${TAG:-latest}
     build:
       context: .
       dockerfile: apps/web/Dockerfile
@@ -18,7 +18,7 @@ services:
         condition: service_healthy
 
   api:
-    image: ${REGISTRY:-flowboard}/api:${TAG:-latest}
+    image: ${REGISTRY:-librehubstore}/flow-board-api:${TAG:-latest}
     build:
       context: .
       dockerfile: apps/api/Dockerfile
