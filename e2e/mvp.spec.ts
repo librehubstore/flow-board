@@ -21,7 +21,12 @@ const card = (page: Page, name: string) => page.locator(`[data-task="${name}"]`)
 
 /** Glisser-déposer clavier : Espace, flèches (espacées comme un humain), Espace. */
 async function keyboardMove(page: Page, name: string, ...keys: string[]) {
-  await card(page, name).locator('[data-handle]').focus();
+  const handle = card(page, name).locator('[data-handle]');
+  // Une fenêtre qui se ferme rend le focus de façon asynchrone : on vérifie qu'il est bien sur la carte.
+  await expect(async () => {
+    await handle.focus();
+    await expect(handle).toBeFocused({ timeout: 200 });
+  }).toPass();
   await page.keyboard.press('Space');
   for (const key of keys) {
     await page.waitForTimeout(150);
@@ -122,6 +127,7 @@ test('récurrence : une tâche hebdomadaire terminée prépare la suivante dans 
   await dialog.getByLabel('Récurrence').selectOption('weekly');
   await expect(dialog.getByText('Occurrence n° 1')).toBeVisible();
   await dialog.getByRole('button', { name: 'Fermer' }).click();
+  await expect(dialog).toBeHidden();
   await expect(card(page, 'T1')).toContainText('↻');
 
   await keyboardMove(page, 'T1', 'ArrowRight', 'ArrowRight');
