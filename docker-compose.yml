@@ -1,0 +1,61 @@
+# Flowboard : web (nginx + SPA) → api (NestJS) → mongo.
+# Premier lancement : ADMIN_USERNAME=... ADMIN_PASSWORD=... docker compose up -d
+# Images de la CI : REGISTRY=registry.gitlab.example.org/groupe/flowboard TAG=<sha> docker compose pull
+services:
+  web:
+    image: ${REGISTRY:-librehubstore}/flow-board-web:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    ports:
+      - '${FLOWBOARD_PORT:-8080}:8080'
+    environment:
+      API_UPSTREAM: api:3000
+      MAX_BODY_SIZE: ${MAX_BODY_SIZE:-30m}
+    depends_on:
+      api:
+        condition: service_healthy
+
+  api:
+    image: ${REGISTRY:-librehubstore}/flow-board-api:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    # Pas de port publié : l'API n'est joignable qu'à travers le conteneur web.
+    environment:
+      MONGO_URL: mongodb://mongo:27017/flowboard
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      # false uniquement sans TLS (accès HTTP direct, hors localhost).
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      # Proxys de confiance devant l'API : 1 = le conteneur web ; 2 si un reverse proxy TLS est aussi devant.
+      TRUST_PROXY: ${TRUST_PROXY:-1}
+      # Onboarding en libre-service (optionnel) : URL publique, connexion Google, emails Brevo.
+      APP_URL: ${APP_URL:-http://localhost:8080}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      BREVO_API_KEY: ${BREVO_API_KEY:-}
+      MAIL_FROM_EMAIL: ${MAIL_FROM_EMAIL:-no-reply@librehub.store}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-}
+    volumes:
+      - uploads:/data/uploads
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ['CMD', 'mongosh', '--quiet', '--eval', "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+volumes:
+  mongo-data:
+  uploads:

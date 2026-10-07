@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+test-results/
+playwright-report/
+uploads/
+.env.local
+.env.*.local
+*.log
+.vscode/*
+/apps/api/.env

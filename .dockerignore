@@ -1,0 +1,12 @@
+**/node_modules
+**/dist
+.git
+.idea
+documentation
+test-results
+playwright-report
+uploads
+e2e
+*.log
+**/.env
+**/.env.local

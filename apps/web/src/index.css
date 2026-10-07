@@ -1,0 +1,106 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Jetons de thème : toutes les couleurs d'interface passent par ces variables (clair / sombre). */
+:root {
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --surface-2: #eceef2;
+  --fg: #1a1d23;
+  --muted: #5d6673;
+  --line: #d9dde3;
+  --accent: #2457d6;
+  --accent-fg: #ffffff;
+  --danger: #c0262d;
+  --warn: #a8560a;
+  --ok: #1e7a3e;
+  --focus: #2457d6;
+  color-scheme: light;
+}
+.dark {
+  --bg: #111317;
+  --surface: #1b1e24;
+  --surface-2: #252932;
+  --fg: #e8eaee;
+  --muted: #a0a8b4;
+  --line: #333943;
+  --accent: #82a6ff;
+  --accent-fg: #0d1526;
+  --danger: #ff7b80;
+  --warn: #f2a654;
+  --ok: #6fd391;
+  --focus: #82a6ff;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-danger: var(--danger);
+  --color-warn: var(--warn);
+  --color-ok: var(--ok);
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 14px;
+}
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+dialog::backdrop {
+  background: rgb(0 0 0 / 0.45);
+}
+.markdown a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.markdown ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+.markdown ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+}
+.markdown p + p {
+  margin-top: 0.5rem;
+}
+.markdown code {
+  background: var(--surface-2);
+  padding: 0 0.25rem;
+  border-radius: 3px;
+}
+@media print {
+  header,
+  .no-print,
+  [role='timer'] {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+    color: #000;
+  }
+  .print-board,
+  main {
+    overflow: visible !important;
+    min-height: 0 !important;
+  }
+  .print-board [data-task] {
+    break-inside: avoid;
+  }
+  @page {
+    size: landscape;
+    margin: 1cm;
+  }
+}
