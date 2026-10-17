@@ -19,6 +19,7 @@ const fr = {
     description: 'Description',
     saved: 'Enregistré',
     disabledSuffix: '(désactivé)',
+    reload: 'Recharger',
   },
   nav: {
     boards: 'Boards',
@@ -39,6 +40,7 @@ const fr = {
     google: 'Continuer avec Google',
     or: 'ou',
     noAccount: 'Pas encore de compte ?',
+    tagline: 'Tableaux kanban, suivi du temps et rapports pour vos équipes.',
   },
   register: {
     title: 'Créer un compte',
@@ -72,6 +74,10 @@ const fr = {
     template: 'Modèle',
     noTemplate: 'Board vierge',
     templateBadge: 'Modèle',
+    count_one: '{{count}} board',
+    count_other: '{{count}} boards',
+    emptyHint: 'Nommez votre premier board ci-dessus pour commencer.',
+    createdAt: 'Créé le {{date}}',
   },
   board: {
     settings: 'Réglages du board',

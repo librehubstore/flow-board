@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import Markdown from 'react-markdown';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowDown, ArrowUp, FileText, Pin, PinOff, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   COLORS,
@@ -252,7 +253,7 @@ function Subtasks({ task, editable, save }: Props) {
                   onClick={() => moveBy(i, -1)}
                   aria-label={`${t('common.moveUp')} — ${s.name}`}
                 >
-                  ↑
+                  <ArrowUp size={14} />
                 </button>
                 <button
                   type="button"
@@ -261,7 +262,7 @@ function Subtasks({ task, editable, save }: Props) {
                   onClick={() => moveBy(i, 1)}
                   aria-label={`${t('common.moveDown')} — ${s.name}`}
                 >
-                  ↓
+                  <ArrowDown size={14} />
                 </button>
                 <button
                   type="button"
@@ -269,7 +270,7 @@ function Subtasks({ task, editable, save }: Props) {
                   onClick={() => update(list.filter((x) => x._id !== s._id))}
                   aria-label={`${t('common.delete')} — ${s.name}`}
                 >
-                  ✕
+                  <X size={14} />
                 </button>
               </>
             ) : (
@@ -807,7 +808,7 @@ function Labels({ task, editable, save }: Props) {
                       })
                     }
                   >
-                    {l.pinned ? '📌' : '📍'}
+                    {l.pinned ? <PinOff size={12} /> : <Pin size={12} />}
                   </button>
                   <button
                     type="button"
@@ -815,7 +816,7 @@ function Labels({ task, editable, save }: Props) {
                     aria-label={t('task.removeLabel', { name })}
                     onClick={() => save({ labels: task.labels.filter((x) => x.id !== l.id) })}
                   >
-                    ✕
+                    <X size={12} />
                   </button>
                 </>
               )}
@@ -955,7 +956,7 @@ function Attachments({ task, editable }: { task: Task; editable: boolean }) {
               />
             ) : (
               <span aria-hidden className="flex h-10 w-10 items-center justify-center rounded bg-surface-2">
-                📄
+                <FileText size={18} className="text-muted" />
               </span>
             )}
             <a
@@ -974,7 +975,7 @@ function Attachments({ task, editable }: { task: Task; editable: boolean }) {
                 aria-label={`${t('common.delete')} — ${a.fileName}`}
                 onClick={() => confirm(t('task.deleteAttachment')) && del.mutate(a._id)}
               >
-                ✕
+                <X size={14} />
               </button>
             )}
           </li>

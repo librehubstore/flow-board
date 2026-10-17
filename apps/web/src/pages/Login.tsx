@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { api, type User } from '../api';
-import { btn, btnPrimary, card, ErrorText, Field, input, useSettings } from '../lib';
+import { btn, btnPrimary, ErrorText, Field, input, useSettings } from '../lib';
 
 /** Logo Google officiel (« G » multicolore), exigé par les consignes de marque des boutons Google. */
 function GoogleLogo() {
@@ -44,73 +44,88 @@ export function Login() {
   const google = !!(settings?.googleAvailable && settings.registration.google);
   const authError = params.get('auth_error');
 
+  const instance = settings?.instanceName ?? 'Flowboard';
+
   return (
-    <main className="flex min-h-screen items-center justify-center p-4">
-      <div className={`${card} w-full max-w-sm space-y-4 p-6 shadow-sm`}>
-        <div className="flex items-center gap-2">
-          <img src="/favicon.svg" alt="" className="h-8 w-8" />
-          <h1 className="text-xl font-bold">{settings?.instanceName ?? 'Flowboard'}</h1>
+    <main className="grid min-h-screen bg-surface lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+      <aside className="hidden flex-col justify-between border-r border-line bg-bg p-10 lg:flex">
+        <div className="flex items-center gap-2.5">
+          <img src="/favicon.svg" alt="" className="h-7 w-7" />
+          <span className="font-semibold tracking-tight">{instance}</span>
         </div>
-        <h2 className="text-base font-semibold">{t('login.title')}</h2>
-        {authError && (
-          <p role="alert" className="text-sm text-danger">
-            {t(`errors.${authError}`, { defaultValue: t('errors.generic') })}
-          </p>
-        )}
-        {google && (
-          <>
-            {/* Navigation complète (pas de fetch) : Google redirige ensuite vers /api/auth/google/callback. */}
-            <a href="/api/auth/google" className={`${btn} w-full py-2`}>
-              <GoogleLogo />
-              {t('login.google')}
-            </a>
-            <p className="flex items-center gap-2 text-xs text-muted before:h-px before:flex-1 before:bg-line after:h-px after:flex-1 after:bg-line">
-              {t('login.or')}
+        <p className="max-w-md text-2xl font-semibold leading-snug tracking-tight">{t('login.tagline')}</p>
+        <p className="text-xs text-muted">Flowboard</p>
+      </aside>
+      <div className="flex items-center justify-center px-4 py-12 sm:px-8">
+        <div className="w-full max-w-sm space-y-6">
+          <div className="space-y-1">
+            <div className="mb-6 flex items-center gap-2 lg:hidden">
+              <img src="/favicon.svg" alt="" className="h-7 w-7" />
+              <span className="font-semibold tracking-tight">{instance}</span>
+            </div>
+            <h1 className="text-xl font-semibold tracking-tight">{t('login.title')}</h1>
+            <p className="text-sm text-muted">{instance}</p>
+          </div>
+          {authError && (
+            <p role="alert" className="text-sm text-danger">
+              {t(`errors.${authError}`, { defaultValue: t('errors.generic') })}
             </p>
-          </>
-        )}
-        <form
-          className="space-y-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            login.mutate();
-          }}
-        >
-          <Field label={open ? t('login.usernameOrEmail') : t('login.username')}>
-            <input
-              className={input}
-              autoComplete="username"
-              autoFocus
-              required
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-            />
-          </Field>
-          <Field label={t('login.password')}>
-            <input
-              className={input}
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </Field>
-          <ErrorText error={login.error} />
-          <button className={`${btnPrimary} w-full`} disabled={login.isPending}>
-            {t('login.submit')}
-          </button>
-        </form>
-        {open && settings?.registration.password ? (
-          <p className="text-sm">
-            {t('login.noAccount')}{' '}
-            <Link to="/register" className="font-semibold text-accent underline">
-              {t('register.title')}
-            </Link>
-          </p>
-        ) : (
-          <p className="text-xs text-muted">{t('login.hint')}</p>
-        )}
+          )}
+          {google && (
+            <>
+              {/* Navigation complète (pas de fetch) : Google redirige ensuite vers /api/auth/google/callback. */}
+              <a href="/api/auth/google" className={`${btn} w-full py-2`}>
+                <GoogleLogo />
+                {t('login.google')}
+              </a>
+              <p className="flex items-center gap-2 text-xs text-muted before:h-px before:flex-1 before:bg-line after:h-px after:flex-1 after:bg-line">
+                {t('login.or')}
+              </p>
+            </>
+          )}
+          <form
+            className="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              login.mutate();
+            }}
+          >
+            <Field label={open ? t('login.usernameOrEmail') : t('login.username')}>
+              <input
+                className={input}
+                autoComplete="username"
+                autoFocus
+                required
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
+            </Field>
+            <Field label={t('login.password')}>
+              <input
+                className={input}
+                type="password"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </Field>
+            <ErrorText error={login.error} />
+            <button className={`${btnPrimary} w-full py-2`} disabled={login.isPending}>
+              {t('login.submit')}
+            </button>
+          </form>
+          {open && settings?.registration.password ? (
+            <p className="text-sm">
+              {t('login.noAccount')}{' '}
+              <Link to="/register" className="font-semibold text-accent underline">
+                {t('register.title')}
+              </Link>
+            </p>
+          ) : (
+            <p className="text-xs text-muted">{t('login.hint')}</p>
+          )}
+        </div>
       </div>
     </main>
   );

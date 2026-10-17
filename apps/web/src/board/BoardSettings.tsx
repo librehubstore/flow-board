@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowDown, ArrowUp, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { BOARD_ROLES, COLORS, CUSTOM_FIELD_TYPES, type BoardRole } from '@flowboard/shared';
 import { api, type Board, type Column, type CustomField, type Role, type Swimlane } from '../api';
@@ -248,7 +249,7 @@ function Items({ kind }: { kind: 'columns' | 'swimlanes' }) {
               onClick={() => moveBy(i, -1)}
               aria-label={`${t('common.moveUp')} — ${item.name}`}
             >
-              ↑
+              <ArrowUp size={14} />
             </button>
             <button
               type="button"
@@ -257,7 +258,7 @@ function Items({ kind }: { kind: 'columns' | 'swimlanes' }) {
               onClick={() => moveBy(i, 1)}
               aria-label={`${t('common.moveDown')} — ${item.name}`}
             >
-              ↓
+              <ArrowDown size={14} />
             </button>
             <button
               type="button"
@@ -265,7 +266,7 @@ function Items({ kind }: { kind: 'columns' | 'swimlanes' }) {
               onClick={() => remove(item._id)}
               aria-label={`${t('common.delete')} — ${item.name}`}
             >
-              ✕
+              <X size={14} />
             </button>
             {deleting === item._id && (
               <span className="flex w-full items-center gap-2 text-sm">
@@ -356,7 +357,7 @@ function ColorLegend() {
                 aria-label={`${t('common.delete')} — ${c}`}
                 onClick={() => save.mutate({ customColors: custom.filter((x) => x !== c) })}
               >
-                ✕
+                <X size={14} />
               </button>
             )}
           </li>
@@ -443,7 +444,7 @@ function Members() {
               onClick={() => remove.mutate(m.userId)}
               aria-label={`${t('common.delete')} — ${m.fullName}`}
             >
-              ✕
+              <X size={14} />
             </button>
           </li>
         ))}
@@ -530,7 +531,7 @@ function CustomFields() {
                 aria-label={`${t('common.delete')} — ${f.name}`}
                 onClick={() => del.mutate(f._id)}
               >
-                ✕
+                <X size={14} />
               </button>
             </div>
             {f.type === 'number' && (
@@ -573,7 +574,7 @@ function CustomFields() {
                         update.mutate({ ...f, options: f.options.filter((x) => x._id !== o._id) })
                       }
                     >
-                      ✕
+                      <X size={12} />
                     </button>
                   </span>
                 ))}

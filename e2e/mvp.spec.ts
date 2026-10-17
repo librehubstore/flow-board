@@ -128,14 +128,14 @@ test('récurrence : une tâche hebdomadaire terminée prépare la suivante dans 
   await expect(dialog.getByText('Occurrence n° 1')).toBeVisible();
   await dialog.getByRole('button', { name: 'Fermer' }).click();
   await expect(dialog).toBeHidden();
-  await expect(card(page, 'T1')).toContainText('↻');
+  await expect(card(page, 'T1')).toContainText('Récurrence');
 
   await keyboardMove(page, 'T1', 'ArrowRight', 'ArrowRight');
   await expect(cell(page, 'Terminé').locator('[data-task="T1"]')).toBeVisible();
   const upcoming = cell(page, 'À faire').getByText('À venir (1)');
   await expect(upcoming).toBeVisible();
   await upcoming.click();
-  await expect(cell(page, 'À faire').getByRole('button', { name: /↻ T1/ })).toBeVisible();
+  await expect(cell(page, 'À faire').getByRole('button', { name: /^T1/ })).toBeVisible();
 });
 
 test('collaboration : un déplacement est visible chez l’autre membre en moins de 2 s, mention notifiée', async ({
