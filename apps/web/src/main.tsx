@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router';
 import { ApiError } from './api';
 import { App } from './App';
+import '@fontsource-variable/inter';
 import './lib';
 import './index.css';
 

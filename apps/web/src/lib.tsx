@@ -1,3 +1,4 @@
+import { X } from 'lucide-react';
 import i18n from 'i18next';
 import { initReactI18next, useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
@@ -125,22 +126,20 @@ export function cx(...c: (string | false | null | undefined)[]) {
   return c.filter(Boolean).join(' ');
 }
 
-export const btn =
-  'inline-flex items-center justify-center gap-1.5 rounded-md border border-line bg-surface px-3 py-1.5 text-sm font-medium hover:bg-surface-2 disabled:opacity-50 disabled:cursor-not-allowed';
-export const btnPrimary =
-  'inline-flex items-center justify-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-sm font-semibold text-accent-fg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed';
-export const btnGhost =
-  'inline-flex items-center justify-center gap-1 rounded-md px-2 py-1 text-sm text-muted hover:bg-surface-2 hover:text-fg';
-export const btnDanger =
-  'inline-flex items-center justify-center gap-1.5 rounded-md border border-danger px-3 py-1.5 text-sm font-medium text-danger hover:bg-danger hover:text-white disabled:opacity-50';
+const btnBase =
+  'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm transition-colors active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50 disabled:active:translate-y-0';
+export const btn = `${btnBase} gap-1.5 border border-line bg-surface px-3 py-1.5 font-medium shadow-xs hover:bg-surface-2`;
+export const btnPrimary = `${btnBase} gap-1.5 bg-accent px-3 py-1.5 font-semibold text-accent-fg shadow-xs hover:bg-accent-hover`;
+export const btnGhost = `${btnBase} gap-1 px-2 py-1 text-muted hover:bg-surface-2 hover:text-fg`;
+export const btnDanger = `${btnBase} gap-1.5 border border-danger/40 px-3 py-1.5 font-medium text-danger hover:bg-danger/10`;
 export const input =
-  'w-full rounded-md border border-line bg-surface px-2.5 py-1.5 text-sm text-fg placeholder:text-muted focus:border-accent focus:outline-none';
+  'w-full rounded-md border border-line bg-surface px-2.5 py-1.5 text-sm text-fg shadow-xs placeholder:text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20';
 export const card = 'rounded-lg border border-line bg-surface';
 
 export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
   return (
     <label className="block space-y-1">
-      <span className="text-xs font-semibold uppercase tracking-wide text-muted">{label}</span>
+      <span className="text-[13px] font-medium text-fg">{label}</span>
       {children}
       {hint && <span className="block text-xs text-muted">{hint}</span>}
     </label>
@@ -157,6 +156,9 @@ export function ErrorText({ error }: { error: unknown }) {
   );
 }
 
+/** Teintes d'avatar : luminosité fixe (texte blanc lisible), teinte choisie par hash du nom. */
+const AVATAR_COLORS = [264, 230, 195, 160, 130, 60, 25, 340, 300].map((h) => `oklch(48% 0.11 ${h})`);
+
 export function Avatar({ name, size = 24 }: { name: string; size?: number }) {
   const initials = name
     .split(/\s+/)
@@ -165,13 +167,13 @@ export function Avatar({ name, size = 24 }: { name: string; size?: number }) {
     .join('')
     .toUpperCase();
   let hash = 0;
-  for (const ch of name) hash = (hash * 31 + ch.charCodeAt(0)) % 360;
+  for (const ch of name) hash = (hash * 31 + ch.charCodeAt(0)) % AVATAR_COLORS.length;
   return (
     <span
       aria-hidden
       title={name}
       className="inline-flex shrink-0 items-center justify-center rounded-full font-semibold text-white"
-      style={{ width: size, height: size, fontSize: size * 0.42, background: `hsl(${hash} 45% 36%)` }}
+      style={{ width: size, height: size, fontSize: size * 0.42, background: AVATAR_COLORS[hash] }}
     >
       {initials}
     </span>
@@ -250,7 +252,7 @@ export function Modal({
           <div className="mb-4 flex items-start justify-between gap-4">
             <h2 className="text-lg font-semibold">{title}</h2>
             <button type="button" className={btnGhost} onClick={onClose} aria-label={t('common.close')}>
-              ✕
+              <X size={16} />
             </button>
           </div>
           {children}

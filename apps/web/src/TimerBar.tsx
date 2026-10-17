@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Coffee, Hourglass, Timer } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { DEFAULT_POMODORO, INTERRUPTION_REASONS, type InterruptInput } from '@flowboard/shared';
 import { api } from './api';
@@ -132,7 +133,13 @@ export function TimerBar() {
         timer.phase === 'work' ? 'bg-accent/10' : 'bg-ok/10',
       )}
     >
-      <span aria-hidden>{timer.kind === 'stopwatch' ? '⏱' : timer.phase === 'work' ? '🍅' : '☕'}</span>
+      {timer.kind === 'stopwatch' ? (
+        <Timer size={16} />
+      ) : timer.phase === 'work' ? (
+        <Hourglass size={16} />
+      ) : (
+        <Coffee size={16} />
+      )}
       <strong>{label}</strong>
       <span className="font-mono tabular-nums">{clock(running)}</span>
       {timer.phase === 'work' && (

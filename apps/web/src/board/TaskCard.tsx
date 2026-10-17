@@ -1,6 +1,7 @@
 import { useEffect, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { ListChecks, MessageSquare, Paperclip, Repeat, Timer } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { dueStatus, taskRef, type DueStatus } from '@flowboard/shared';
 import { api, type Task } from '../api';
@@ -94,11 +95,11 @@ export function useRecentEditor(task: Task) {
 }
 
 const DUE_STYLE: Record<DueStatus, string> = {
-  met: 'border-ok text-ok',
-  missed: 'border-danger text-danger',
-  overdue: 'border-danger bg-danger text-white dark:text-black',
-  soon: 'border-warn bg-warn text-white dark:text-black',
-  pending: 'border-line text-muted',
+  met: 'bg-ok/12 text-ok',
+  missed: 'bg-danger/12 text-danger',
+  overdue: 'bg-danger/15 text-danger font-semibold',
+  soon: 'bg-warn/15 text-warn',
+  pending: 'bg-surface-2 text-muted',
 };
 
 export function TaskCard({ task, overlay, handle }: { task: Task; overlay?: boolean; handle?: ReactNode }) {
@@ -131,13 +132,13 @@ export function TaskCard({ task, overlay, handle }: { task: Task; overlay?: bool
   return (
     <article
       className={cx(
-        'relative cursor-pointer overflow-hidden rounded-lg border border-line bg-surface py-2 pl-3 pr-2 text-sm shadow-sm hover:border-muted',
+        'relative cursor-pointer overflow-hidden rounded-md border border-line bg-surface py-2 pl-3.5 pr-2.5 text-sm shadow-xs transition-colors hover:border-muted',
         overlay && 'shadow-xl ring-2 ring-accent',
       )}
     >
       <span
         aria-hidden
-        className="absolute inset-y-0 left-0 w-1.5"
+        className="absolute inset-y-0 left-0 w-1"
         style={{ background: colorHex(task.color) }}
       />
       <span className="sr-only">{colorName}. </span>
@@ -168,7 +169,7 @@ export function TaskCard({ task, overlay, handle }: { task: Task; overlay?: bool
       )}
       <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-muted empty:hidden">
         {task.dueAt && due && (
-          <span className={cx('rounded border px-1.5 py-0.5 font-medium', DUE_STYLE[due])}>
+          <span className={cx('rounded px-1.5 py-0.5 font-medium', DUE_STYLE[due])}>
             {t(`card.due.${due}`)} · {formatDue(task.dueAt, task.dueHasTime, i18n.language, tz)}
           </span>
         )}
@@ -176,7 +177,7 @@ export function TaskCard({ task, overlay, handle }: { task: Task; overlay?: bool
           <button
             type="button"
             className={cx(
-              'rounded border border-line px-1.5 py-0.5',
+              'inline-flex items-center gap-1 rounded px-1 py-0.5 hover:bg-surface-2',
               done === task.subtasks.length && 'text-ok',
             )}
             aria-expanded={showSubtasks}
@@ -186,24 +187,40 @@ export function TaskCard({ task, overlay, handle }: { task: Task; overlay?: bool
             }}
             onPointerDown={(e) => e.stopPropagation()}
           >
-            ☑ {done}/{task.subtasks.length}
+            <ListChecks size={13} /> {done}/{task.subtasks.length}
             <span className="sr-only"> {t('card.subtasks', { done, total: task.subtasks.length })}</span>
           </button>
         )}
-        {task.recurrence && <span title={t('recurrence.title')}>↻</span>}
+        {task.recurrence && (
+          <span title={t('recurrence.title')}>
+            <Repeat size={13} />
+            <span className="sr-only">{t('recurrence.title')}</span>
+          </span>
+        )}
         {!!(task.secondsEstimate || task.spentSeconds) && (
-          <span title={`${t('card.spent')} / ${t('card.estimate')}`}>
-            ⏱ {formatDuration(task.spentSeconds ?? 0)}
+          <span
+            className="inline-flex items-center gap-1"
+            title={`${t('card.spent')} / ${t('card.estimate')}`}
+          >
+            <Timer size={13} /> {formatDuration(task.spentSeconds ?? 0)}
             {task.secondsEstimate ? ` / ${formatDuration(task.secondsEstimate)}` : ''}
           </span>
         )}
         {task.pointsEstimate !== null && <span title={t('task.points')}>{task.pointsEstimate} pt</span>}
         {task.commentsCount > 0 && (
-          <span aria-label={t('card.comments', { count: task.commentsCount })}>💬 {task.commentsCount}</span>
+          <span
+            className="inline-flex items-center gap-1"
+            aria-label={t('card.comments', { count: task.commentsCount })}
+          >
+            <MessageSquare size={13} /> {task.commentsCount}
+          </span>
         )}
         {task.attachmentsCount > 0 && (
-          <span aria-label={t('card.attachments', { count: task.attachmentsCount })}>
-            📎 {task.attachmentsCount}
+          <span
+            className="inline-flex items-center gap-1"
+            aria-label={t('card.attachments', { count: task.attachmentsCount })}
+          >
+            <Paperclip size={13} /> {task.attachmentsCount}
           </span>
         )}
         {responsible && (
@@ -213,7 +230,7 @@ export function TaskCard({ task, overlay, handle }: { task: Task; overlay?: bool
         )}
       </div>
       {showSubtasks && <CardSubtasks task={task} />}
-      {editor && <p className="mt-1 text-xs italic text-accent">{t('board.editedBy', { name: editor })}</p>}
+      {editor && <p className="mt-1 text-xs text-accent">{t('board.editedBy', { name: editor })}</p>}
     </article>
   );
 }

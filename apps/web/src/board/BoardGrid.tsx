@@ -21,6 +21,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { ChevronDown, ChevronLeft, ChevronRight, Eye, EyeOff, Hourglass, Plus, Repeat } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { completionGroup, estimatedPomodoros } from '@flowboard/shared';
 import { api, type Column, type Swimlane, type Task, type User } from '../api';
@@ -346,7 +347,15 @@ function ColumnHeader({
           {column.name}
         </h2>
         <span className={cx('text-xs tabular-nums', over ? 'font-bold text-danger' : 'text-muted')}>
-          {column.wipLimit !== null ? `${load}${pomodoros ? ' 🍅' : ''} / ${column.wipLimit}` : count}
+          {column.wipLimit !== null ? (
+            <>
+              {load}
+              {pomodoros && <Hourglass size={12} className="ml-0.5 inline align-[-1px]" />} /{' '}
+              {column.wipLimit}
+            </>
+          ) : (
+            count
+          )}
         </span>
         {over && <span className="text-xs font-semibold text-danger">· {t('board.wipExceeded')}</span>}
         <span className={cx('ml-auto flex items-center', wall && 'hidden')}>
@@ -358,7 +367,7 @@ function ColumnHeader({
             title={t('board.watch')}
             onClick={() => watch.mutate()}
           >
-            {watched ? '●' : '○'}
+            {watched ? <Eye size={16} /> : <EyeOff size={16} />}
           </button>
           {can('task.create') && !data.board.swimlanes.length && (
             <button
@@ -368,7 +377,7 @@ function ColumnHeader({
               title={t('board.addTaskTop')}
               aria-label={`${t('board.addTaskTop')} — ${column.name}`}
             >
-              +
+              <Plus size={16} />
             </button>
           )}
           <button
@@ -377,7 +386,7 @@ function ColumnHeader({
             onClick={onToggle}
             aria-label={`${t('board.collapse')} — ${column.name}`}
           >
-            ‹
+            <ChevronLeft size={16} />
           </button>
         </span>
       </div>
@@ -521,7 +530,7 @@ function Cell({
                     })
                   }
                 >
-                  <span aria-hidden>{openGroups.has(g.key) ? '▾' : '▸'}</span>
+                  {openGroups.has(g.key) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                   {label(g.key)} <span className="font-normal">({g.ids.length})</span>
                 </button>
                 {openGroups.has(g.key) && cards(g.ids)}
@@ -578,7 +587,10 @@ function Upcoming({ columnId, laneId }: { columnId: string; laneId: string | nul
               className={cx(btnGhost, 'w-full justify-between')}
               onClick={() => openTask(x._id)}
             >
-              <span className="truncate">↻ {x.name}</span>
+              <span className="flex min-w-0 items-center gap-1.5">
+                <Repeat size={13} className="shrink-0" />
+                <span className="truncate">{x.name}</span>
+              </span>
               <span>{formatDate(x.startAt!, i18n.language, tz)}</span>
             </button>
           </li>

@@ -1,7 +1,18 @@
-import { Component, useCallback, useEffect, useState, type ReactNode } from 'react';
+import { Component, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import {
+  Bell,
+  ChartColumn,
+  ChevronDown,
+  LayoutGrid,
+  LogOut,
+  RotateCw,
+  Search,
+  ShieldCheck,
+  UserRound,
+} from 'lucide-react';
 import { api, ApiError, type AppNotification } from './api';
 import { Avatar, btnGhost, cx, formatDate, i18n, useDirectory, useMe, useSettings, useTimeZone } from './lib';
 import { closeSocket, getSocket } from './socket';
@@ -105,7 +116,8 @@ function Layout({ children }: { children: React.ReactNode }) {
   const [searching, setSearching] = useState(false);
   const { help, closeHelp } = useShortcuts(useCallback(() => setSearching(true), []));
 
-  const nav = ({ isActive }: { isActive: boolean }) => cx(btnGhost, isActive && 'bg-surface-2 text-fg');
+  const nav = ({ isActive }: { isActive: boolean }) =>
+    cx(btnGhost, 'gap-1.5 px-2.5', isActive && 'bg-surface-2 font-medium text-fg');
   return (
     <div className="flex min-h-screen flex-col">
       <a
@@ -114,48 +126,44 @@ function Layout({ children }: { children: React.ReactNode }) {
       >
         {t('nav.skip')}
       </a>
-      <header className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-line bg-surface px-3 py-2">
-        <Link to="/" className="mr-2 flex items-center gap-2 font-bold">
+      <header className="flex min-h-12 flex-wrap items-center gap-x-3 gap-y-1 border-b border-line bg-surface px-3 py-1.5 sm:px-4">
+        <Link to="/" className="flex items-center gap-2 rounded-md pr-1 font-semibold tracking-tight">
           <img src="/favicon.svg" alt="" className="h-6 w-6" />
-          <span className="hidden sm:inline">{settings?.instanceName ?? 'Flowboard'}</span>
+          <span className="hidden max-w-48 truncate sm:inline">{settings?.instanceName ?? 'Flowboard'}</span>
         </Link>
-        <nav className="flex items-center gap-1">
+        <span aria-hidden className="hidden h-5 w-px bg-line sm:block" />
+        <nav className="flex items-center gap-0.5">
           <NavLink to="/" end className={nav}>
+            <LayoutGrid size={15} />
             {t('nav.boards')}
           </NavLink>
           <NavLink to="/reports" className={nav}>
+            <ChartColumn size={15} />
             {t('nav.reports')}
           </NavLink>
           {me.globalRole === 'admin' && (
             <NavLink to="/admin" className={nav}>
+              <ShieldCheck size={15} />
               {t('nav.admin')}
             </NavLink>
           )}
         </nav>
         <div className="ml-auto flex items-center gap-1">
-          <button type="button" className={btnGhost} onClick={() => setSearching(true)} title="/ · Ctrl+K">
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              aria-hidden
-            >
-              <circle cx="11" cy="11" r="7" />
-              <path d="m20 20-3.5-3.5" />
-            </svg>
-            <span className="hidden sm:inline">{t('search.title')}</span>
+          <button
+            type="button"
+            className="inline-flex h-8 items-center gap-2 rounded-md border border-line bg-bg px-2.5 text-sm text-muted transition-colors hover:border-muted hover:text-fg sm:w-56"
+            onClick={() => setSearching(true)}
+            aria-label={t('search.title')}
+            title="/ · Ctrl+K"
+          >
+            <Search size={15} />
+            <span className="hidden flex-1 text-left sm:inline">{t('search.title')}…</span>
+            <kbd className="hidden rounded border border-line bg-surface px-1.5 font-sans text-[11px] sm:inline">
+              Ctrl K
+            </kbd>
           </button>
           <NotificationsBell />
-          <NavLink to="/profile" className={nav} aria-label={t('nav.profile')}>
-            <Avatar name={me.fullName} />
-            <span className="hidden sm:inline">{me.fullName}</span>
-          </NavLink>
-          <button type="button" className={btnGhost} onClick={() => logout.mutate()}>
-            {t('nav.logout')}
-          </button>
+          <UserMenu onLogout={() => logout.mutate()} />
         </div>
       </header>
       <TimerBar />
@@ -168,9 +176,76 @@ function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
+/** Ferme un menu déroulant au clic extérieur ou sur Échap, et rend le focus au bouton. */
+function useDismiss(open: boolean, close: () => void) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onPointer = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && close();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      close();
+      ref.current?.querySelector<HTMLElement>('[aria-expanded]')?.focus();
+    };
+    document.addEventListener('pointerdown', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open, close]);
+  return ref;
+}
+
+function UserMenu({ onLogout }: { onLogout: () => void }) {
+  const { t } = useTranslation();
+  const me = useMe().data!;
+  const [open, setOpen] = useState(false);
+  const close = useCallback(() => setOpen(false), []);
+  const ref = useDismiss(open, close);
+  const item =
+    'flex w-full items-center gap-2 rounded px-2.5 py-1.5 text-left text-sm hover:bg-surface-2 focus-visible:bg-surface-2';
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        className={cx(btnGhost, 'gap-2 pl-1 pr-1.5 text-fg')}
+        aria-expanded={open}
+        aria-haspopup="true"
+        aria-label={t('nav.profile')}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <Avatar name={me.fullName} size={26} />
+        <span className="hidden max-w-40 truncate sm:inline">{me.fullName}</span>
+        <ChevronDown size={14} className="text-muted" />
+      </button>
+      {open && (
+        <div className="absolute right-0 z-40 mt-1 w-60 rounded-lg border border-line bg-surface p-1 shadow-lg">
+          <div className="border-b border-line px-2.5 pb-2 pt-1.5">
+            <p className="truncate font-medium">{me.fullName}</p>
+            {me.email && <p className="truncate text-xs text-muted">{me.email}</p>}
+          </div>
+          <div className="pt-1">
+            <Link to="/profile" className={item} onClick={close}>
+              <UserRound size={15} className="text-muted" />
+              {t('nav.profile')}
+            </Link>
+            <button type="button" className={item} onClick={onLogout}>
+              <LogOut size={15} className="text-muted" />
+              {t('nav.logout')}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function NotificationsBell() {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const close = useCallback(() => setOpen(false), []);
+  const ref = useDismiss(open, close);
   const navigate = useNavigate();
   const qc = useQueryClient();
   const tz = useTimeZone();
@@ -188,33 +263,23 @@ function NotificationsBell() {
     users.find((u) => u._id === id)?.fullName ?? t('notifications.someone');
 
   return (
-    <div className="relative">
+    <div ref={ref} className="relative">
       <button
         type="button"
-        className={cx(btnGhost, 'relative')}
+        className={cx(btnGhost, 'relative h-8 w-8 px-0')}
         aria-expanded={open}
         aria-label={`${t('nav.notifications')} (${unread})`}
         onClick={() => setOpen((o) => !o)}
       >
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          aria-hidden
-        >
-          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0" />
-        </svg>
+        <Bell size={17} />
         {unread > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-danger px-1 text-[10px] font-bold leading-4 text-white">
+          <span className="absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-danger px-1 text-[10px] font-semibold leading-4 text-white ring-2 ring-surface">
             {unread}
           </span>
         )}
       </button>
       {open && (
-        <div className="absolute right-0 z-40 mt-1 w-80 rounded-lg border border-line bg-surface shadow-xl">
+        <div className="absolute right-0 z-40 mt-1 w-80 max-w-[calc(100vw-1.5rem)] rounded-lg border border-line bg-surface shadow-lg">
           <div className="flex items-center justify-between border-b border-line px-3 py-2">
             <strong>{t('nav.notifications')}</strong>
             {unread > 0 && (
@@ -270,8 +335,13 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
       <div role="alert" className="m-6 space-y-2">
         <p className="font-semibold text-danger">{i18n.t('errors.generic')}</p>
         <pre className="text-xs text-muted">{this.state.error.message}</pre>
-        <button type="button" className={btnGhost} onClick={() => location.reload()}>
-          ↻
+        <button
+          type="button"
+          className={btnGhost}
+          onClick={() => location.reload()}
+          aria-label={i18n.t('common.reload')}
+        >
+          <RotateCw size={16} />
         </button>
       </div>
     );

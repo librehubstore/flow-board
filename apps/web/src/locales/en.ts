@@ -21,6 +21,7 @@ const en: Messages = {
     description: 'Description',
     saved: 'Saved',
     disabledSuffix: '(disabled)',
+    reload: 'Reload',
   },
   nav: {
     boards: 'Boards',
@@ -41,6 +42,7 @@ const en: Messages = {
     google: 'Continue with Google',
     or: 'or',
     noAccount: 'No account yet?',
+    tagline: 'Kanban boards, time tracking and reports for your teams.',
   },
   register: {
     title: 'Create an account',
@@ -73,6 +75,10 @@ const en: Messages = {
     template: 'Template',
     noTemplate: 'Blank board',
     templateBadge: 'Template',
+    count_one: '{{count}} board',
+    count_other: '{{count}} boards',
+    emptyHint: 'Name your first board above to get started.',
+    createdAt: 'Created {{date}}',
   },
   board: {
     settings: 'Board settings',

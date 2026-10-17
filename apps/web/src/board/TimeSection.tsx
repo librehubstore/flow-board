@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Hourglass, PencilLine, Timer, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { DEFAULT_POMODORO } from '@flowboard/shared';
 import { api, type Task } from '../api';
@@ -7,6 +8,7 @@ import {
   btn,
   btnGhost,
   btnPrimary,
+  cx,
   ErrorText,
   formatDate,
   formatDuration,
@@ -101,7 +103,7 @@ export function TimeSection({ task }: { task: Task }) {
               className={btn}
               onClick={() => action.mutate({ path: 'switch', body: { taskId: task._id } })}
             >
-              ⏱ {t('time.switchHere')}
+              <Timer size={14} /> {t('time.switchHere')}
             </button>
           ) : !timer || timer.phase !== 'work' ? (
             <>
@@ -115,7 +117,7 @@ export function TimeSection({ task }: { task: Task }) {
                     action.mutate({ path: 'start', body: { kind: 'pomodoro', taskId: task._id } });
                   }}
                 >
-                  🍅 {t('time.startPomodoro')}
+                  <Hourglass size={14} /> {t('time.startPomodoro')}
                 </button>
               )}
               <button
@@ -125,7 +127,7 @@ export function TimeSection({ task }: { task: Task }) {
                   action.mutate({ path: 'start', body: { kind: 'stopwatch', taskId: task._id } })
                 }
               >
-                ⏱ {t('time.startStopwatch')}
+                <Timer size={14} /> {t('time.startStopwatch')}
               </button>
             </>
           ) : null}
@@ -138,8 +140,14 @@ export function TimeSection({ task }: { task: Task }) {
           .map((e) => (
             <li key={e._id} className="flex flex-wrap items-center gap-2">
               <span className="w-16 font-mono tabular-nums">{formatDuration(seconds(e))}</span>
-              <span className="text-xs text-muted">
-                {e.type === 'pomodoro' ? (e.success ? '🍅' : '🍅✗') : e.type === 'stopwatch' ? '⏱' : '✎'}{' '}
+              <span className="flex items-center gap-1 text-xs text-muted">
+                {e.type === 'pomodoro' ? (
+                  <Hourglass size={12} className={cx(!e.success && 'text-danger')} />
+                ) : e.type === 'stopwatch' ? (
+                  <Timer size={12} />
+                ) : (
+                  <PencilLine size={12} />
+                )}
                 {formatDate(e.startAt, i18n.language, tz, true)} · {member(e.userId)?.fullName ?? '?'}
               </span>
               {e.comment && <span className="min-w-0 truncate">{e.comment}</span>}
@@ -155,7 +163,7 @@ export function TimeSection({ task }: { task: Task }) {
                   aria-label={`${t('common.delete')} — ${formatDuration(seconds(e))}`}
                   onClick={() => del.mutate(e._id)}
                 >
-                  ✕
+                  <X size={14} />
                 </button>
               )}
             </li>
