@@ -11,6 +11,7 @@
 [![Docker web](https://img.shields.io/docker/v/librehubstore/flow-board-web?label=flow-board-web&logo=docker&logoColor=white&sort=semver)](https://hub.docker.com/r/librehubstore/flow-board-web)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
 ![WCAG 2.1 AA](https://img.shields.io/badge/WCAG-2.1%20AA-1e7a3e)
+[![Licence MIT](https://img.shields.io/badge/licence-MIT-blue)](LICENSE)
 
 [Démarrage rapide](#démarrage-rapide) · [Fonctionnalités](#fonctionnalités) · [Configuration](#configuration) · [Développement](#développement) · [Documentation](#documentation)
 
@@ -154,3 +155,7 @@ Dépendances sans cycle : `database ← board-access ← auth ← realtime ← n
 - [Spécification](documentation/kanbanflow-prompt.md)
 - [Plan et suivi d'avancement](documentation/plan-implémentation.md)
 - [Décisions et hypothèses](DECISIONS.md)
+
+## Licence
+
+Distribué sous licence [MIT](LICENSE).
